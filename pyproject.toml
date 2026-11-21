@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dpia-as-code"
+version = "0.1.0"
+description = "Architecture-driven automated DPIA/PIA and LINDDUN privacy threat modeling engine for CI/CD"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "DPIA-as-Code Contributors" }]
+keywords = [
+    "privacy",
+    "dpia",
+    "pia",
+    "gdpr",
+    "pipl",
+    "linddun",
+    "threat-modeling",
+    "privacy-engineering",
+    "devsecops",
+]
+dependencies = [
+    "pydantic>=2.7.0,<3.0.0",
+    "PyYAML>=6.0.1",
+    "jsonschema>=4.20.0",
+    "Jinja2>=3.1.2",
+    "click>=8.1.7",
+]
+
+[project.optional-dependencies]
+web = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.29.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+    "httpx>=0.27.0",
+]
+
+[project.scripts]
+dpia = "dpia_as_code.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dpia_as_code = ["web/static/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

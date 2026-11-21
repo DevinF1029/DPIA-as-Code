@@ -1,0 +1,157 @@
+# Policy-as-Code: Multi-Jurisdiction Regulatory Thresholds & Conflict Rules
+# 1:1 machine-readable mirror of governance/02_regulatory_matrix.md
+
+schema_version: "1.0"
+policy_ref: "RTM-COMP-002"
+
+jurisdiction_rules:
+  GDPR:
+    dpia_trigger_min_criteria: 2
+    large_scale_subject_threshold: 100000
+    criteria:
+      - rule_id: GDPR-WP29-01
+        title: "Evaluation or Scoring (Profiling / Credit / Risk Scoring)"
+        legal_reference: "GDPR Art. 35(3)(a); WP248 rev.01 Criterion #1"
+        condition_key: "process_has_profiling_or_scoring"
+        related_controls: [PC-AI-02, PC-GOV-01]
+
+      - rule_id: GDPR-WP29-02
+        title: "Automated Decision-Making with Legal or Significant Effect"
+        legal_reference: "GDPR Art. 35(3)(a) & Art. 22; WP248 rev.01 Criterion #2"
+        condition_key: "process_high_impact_adm"
+        related_controls: [PC-AI-01, PC-AI-02]
+
+      - rule_id: GDPR-WP29-03
+        title: "Systematic Monitoring"
+        legal_reference: "GDPR Art. 35(3)(c); WP248 rev.01 Criterion #3"
+        condition_key: "process_has_systematic_monitoring"
+        related_controls: [PC-GOV-03, PC-DAT-01]
+
+      - rule_id: GDPR-WP29-04
+        title: "Sensitive Data or Data of a Highly Personal Nature"
+        legal_reference: "GDPR Art. 9 & Art. 10; WP248 rev.01 Criterion #4"
+        condition_key: "asset_sensitive_gdpr"
+        related_controls: [PC-GOV-02, PC-ENC-02]
+
+      - rule_id: GDPR-WP29-05
+        title: "Data Processed on a Large Scale"
+        legal_reference: "GDPR Art. 35(3)(b); WP248 rev.01 Criterion #5"
+        condition_key: "scale_is_large"
+        related_controls: [PC-DAT-01, PC-ACC-01]
+
+      - rule_id: GDPR-WP29-06
+        title: "Matching or Combining Datasets"
+        legal_reference: "WP248 rev.01 Criterion #6"
+        condition_key: "process_has_dataset_matching"
+        related_controls: [PC-ENC-03, PC-DAT-01]
+
+      - rule_id: GDPR-WP29-07
+        title: "Data Concerning Vulnerable Data Subjects"
+        legal_reference: "WP248 rev.01 Criterion #7"
+        condition_key: "subjects_include_vulnerable"
+        related_controls: [PC-GOV-02, PC-GOV-03]
+
+      - rule_id: GDPR-WP29-08
+        title: "Innovative Use or Applying New Technological Solutions"
+        legal_reference: "GDPR Art. 35(1); WP248 rev.01 Criterion #8"
+        condition_key: "process_uses_innovative_tech"
+        related_controls: [PC-AI-03, PC-ENC-05]
+
+      - rule_id: GDPR-WP29-09
+        title: "Processing Prevents Data Subjects from Exercising a Right or Using a Service"
+        legal_reference: "WP248 rev.01 Criterion #9"
+        condition_key: "process_prevents_rights_or_service"
+        related_controls: [PC-AI-01, PC-GOV-03]
+
+  PIPL:
+    dpia_trigger_min_criteria: 1
+    subject_volume_tiers:
+      sensitive_cross_border_security_assessment: 10000
+      general_cross_border_standard_contract: 100000
+      general_cross_border_security_assessment: 1000000
+      major_handler_audit_threshold: 10000000
+    criteria:
+      - rule_id: PIPL-ART55-01
+        title: "Processing Sensitive Personal Information"
+        legal_reference: "PIPL Art. 55(1) & Art. 28"
+        condition_key: "asset_sensitive_pipl"
+        related_controls: [PC-GOV-02, PC-ENC-02]
+
+      - rule_id: PIPL-ART55-02
+        title: "Automated Decision-Making Using Personal Information"
+        legal_reference: "PIPL Art. 55(2) & Art. 24"
+        condition_key: "process_has_adm_or_profiling"
+        related_controls: [PC-AI-01, PC-AI-02]
+
+      - rule_id: PIPL-ART55-03
+        title: "Entrusted Processing, Third-Party Provision, or Public Disclosure"
+        legal_reference: "PIPL Art. 55(3) & Art. 21/23/25"
+        condition_key: "has_third_party_or_public_disclosure"
+        related_controls: [PC-XBD-03, PC-GOV-02]
+
+      - rule_id: PIPL-ART55-04
+        title: "Cross-Border Provision of Personal Information Outside China"
+        legal_reference: "PIPL Art. 55(4) & Art. 38-40; 2024 Cross-Border Rules"
+        condition_key: "has_cross_border_personal_flow"
+        related_controls: [PC-XBD-02, PC-XBD-03]
+
+      - rule_id: PIPL-ART55-05
+        title: "Other Processing with Major Impact on Individual Rights and Interests"
+        legal_reference: "PIPL Art. 55(5)"
+        condition_key: "process_prevents_rights_or_service"
+        related_controls: [PC-AI-01, PC-GOV-05]
+
+  EU_AI_ACT:
+    dpia_trigger_min_criteria: 1
+    criteria:
+      - rule_id: AIA-ART05-PROH
+        title: "Prohibited AI Practice Detected"
+        legal_reference: "EU AI Act Art. 5"
+        condition_key: "ai_prohibited_practice"
+        related_controls: [PC-AI-03]
+
+      - rule_id: AIA-ART06-HRAI
+        title: "High-Risk AI System Classification (Triggers FRIA)"
+        legal_reference: "EU AI Act Art. 6, Annex III & Art. 27"
+        condition_key: "ai_high_risk_or_biometric_credit"
+        related_controls: [PC-AI-01, PC-AI-03, PC-AI-04]
+
+      - rule_id: AIA-ART13-TRNS
+        title: "AI Transparency & Interaction Disclosure Obligation"
+        legal_reference: "EU AI Act Art. 13 & Art. 50"
+        condition_key: "ai_missing_transparency_notice"
+        related_controls: [PC-GOV-03, PC-AI-02]
+
+  CN_DSL_NDSR:
+    dpia_trigger_min_criteria: 1
+    criteria:
+      - rule_id: DSL-ART30-IMP
+        title: "Important / Core Data Processing Requires Annual Risk Assessment"
+        legal_reference: "DSL Art. 21 & Art. 30; NDSR Art. 29 & Art. 31; GB/T 43697"
+        condition_key: "has_important_or_core_data"
+        related_controls: [PC-DAT-02, PC-GOV-06]
+
+      - rule_id: CSL-ART37-CIIO
+        title: "CIIO Data Localization & Cross-Border Security Assessment"
+        legal_reference: "CSL Art. 37; CIIO Regs Art. 17/19"
+        condition_key: "is_ciio_with_cross_border_or_change"
+        related_controls: [PC-XBD-02, PC-GOV-06]
+
+      - rule_id: NDSR-ART28-10M
+        title: "Large-Scale Handler (>= 10M Individuals) Important-Data Equivalent Obligations"
+        legal_reference: "NDSR (State Council Decree No. 790) Art. 28"
+        condition_key: "subjects_exceed_10m"
+        related_controls: [PC-GOV-06, PC-GOV-05]
+
+cross_jurisdiction_conflicts:
+  - conflict_id: CONFLICT-LB-LEGITIMATE-INTERESTS
+    jurisdictions: [GDPR, PIPL]
+    description: "`legitimate_interests` is valid under GDPR Art. 6(1)(f) but does NOT exist under China PIPL Art. 13."
+    condition_key: "pipl_uses_legitimate_interests"
+    severity: error
+
+  - conflict_id: CONFLICT-SENSITIVE-SCOPE
+    jurisdictions: [GDPR, PIPL]
+    description: "`financial_account`, `precise_location`, and `government_id` are statutory sensitive data under PIPL Art. 28 (requiring separate_consent and PIA) even though outside GDPR Art. 9."
+    condition_key: "pipl_only_sensitive_category_present"
+    severity: info

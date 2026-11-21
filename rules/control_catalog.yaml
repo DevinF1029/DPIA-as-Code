@@ -1,0 +1,299 @@
+# Policy-as-Code: Standardized Privacy, Data Security & AI Control Catalog (PC-xxx-xx)
+# 1:1 machine-readable mirror of governance/04_control_catalog.md (25 controls across 6 domains)
+
+schema_version: "1.0"
+policy_ref: "CAT-CTRL-004"
+
+controls:
+  # ------------------------------------------------------------------
+  # Domain 1: PC-GOV — Governance, Lawfulness & Transparency
+  # ------------------------------------------------------------------
+  - id: PC-GOV-01
+    domain: PC-GOV
+    name: "Lawful Basis & Purpose Limitation"
+    pet_types: [purpose_limitation]
+    mitigates_threats: [non_compliance]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 0
+    regulations: ["GDPR Art. 5/6", "PIPL Art. 6/13"]
+    audit_evidence: "Privacy policy lawful basis register; API gateway purpose enforcement config."
+
+  - id: PC-GOV-02
+    domain: PC-GOV
+    name: "Consent & Sensitive Data Separate Consent Management"
+    pet_types: [consent_management]
+    mitigates_threats: [unawareness, non_compliance]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 0
+    regulations: ["GDPR Art. 7/9", "PIPL Art. 14/28-31"]
+    audit_evidence: "Separate consent UI screenshots; immutable consent ledger with version & timestamp; withdrawal test report."
+
+  - id: PC-GOV-03
+    domain: PC-GOV
+    name: "Privacy & AI Interaction Transparency Notice"
+    pet_types: [privacy_notice_transparency]
+    mitigates_threats: [unawareness]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 0
+    regulations: ["GDPR Art. 13/14", "PIPL Art. 17", "EU AI Act Art. 13/50"]
+    audit_evidence: "Live layered privacy notice URL; explicit AI interaction/generation disclosure screenshots."
+
+  - id: PC-GOV-04
+    domain: PC-GOV
+    name: "Record of Processing Activities (RoPA) & 3-Year Compliance Archival"
+    pet_types: [audit_logging]
+    mitigates_threats: [non_compliance]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 1
+    max_severity_reduction: 0
+    regulations: ["GDPR Art. 30", "PIPL Art. 56 (>= 3 years)", "NDSR"]
+    audit_evidence: "Versioned RoPA register; WORM archival retention policy >= 1095 days."
+
+  - id: PC-GOV-05
+    domain: PC-GOV
+    name: "Independent Compliance Audit & Regulatory Prior Consultation"
+    pet_types: [security_audit]
+    mitigates_threats: [non_compliance]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 1
+    max_severity_reduction: 0
+    regulations: ["GDPR Art. 36", "PIPL Art. 54", "NDSR Art. 31"]
+    audit_evidence: "Annual independent compliance audit report; remediation tracker; regulator consultation receipt."
+
+  - id: PC-GOV-06
+    domain: PC-GOV
+    name: "Important Data / CIIO / >=10M Handler Annual Risk Assessment & Regulatory Filing"
+    pet_types: [security_audit]
+    mitigates_threats: [non_compliance]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 0
+    regulations: ["DSL Art. 30", "CIIO Regs Art. 17/19", "NDSR Art. 28/31"]
+    audit_evidence: "Data security officer appointment letter; annual important data/CIIO risk assessment filing receipt."
+
+  # ------------------------------------------------------------------
+  # Domain 2: PC-DAT — Data Classification & Lifecycle Minimization
+  # ------------------------------------------------------------------
+  - id: PC-DAT-01
+    domain: PC-DAT
+    name: "Source Data Minimization"
+    pet_types: [data_minimization]
+    mitigates_threats: [linkability, identifiability, disclosure]
+    reduces_dimensions: [severity, likelihood]
+    max_likelihood_reduction: 1
+    max_severity_reduction: 1
+    regulations: ["GDPR Art. 5(1)(c)/25", "PIPL Art. 6"]
+    audit_evidence: "API schema pruning PR; field necessity justification record."
+
+  - id: PC-DAT-02
+    domain: PC-DAT
+    name: "Data Classification & Important Data Tagging"
+    pet_types: [data_minimization, purpose_limitation]
+    mitigates_threats: [non_compliance, disclosure]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 1
+    max_severity_reduction: 0
+    regulations: ["DSL Art. 21", "NDSR Art. 29", "GB/T 43697"]
+    audit_evidence: "Metadata classification catalog; important data identification and declaration receipt."
+
+  - id: PC-DAT-03
+    domain: PC-DAT
+    name: "Automated Retention Limit & Secure Erasure"
+    pet_types: [retention_enforcement]
+    mitigates_threats: [linkability, non_repudiation, non_compliance]
+    reduces_dimensions: [severity, likelihood]
+    max_likelihood_reduction: 1
+    max_severity_reduction: 1
+    regulations: ["GDPR Art. 5(1)(e)", "PIPL Art. 19/47"]
+    audit_evidence: "Database TTL config; scheduled purge CronJob logs; destruction verification record."
+
+  - id: PC-DAT-04
+    domain: PC-DAT
+    name: "Dynamic Data Masking & Log Redaction"
+    pet_types: [data_masking]
+    mitigates_threats: [identifiability, disclosure]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 1
+    max_severity_reduction: 0
+    regulations: ["GDPR Art. 32", "PIPL Art. 51", "CSL Art. 21"]
+    audit_evidence: "Log redaction middleware config; masked UI screenshots; zero-plaintext log scan report."
+
+  # ------------------------------------------------------------------
+  # Domain 3: PC-ENC — Cryptography & Privacy-Enhancing Technologies
+  # ------------------------------------------------------------------
+  - id: PC-ENC-01
+    domain: PC-ENC
+    name: "Strong Encryption in Transit (TLS 1.2/1.3 & mTLS)"
+    pet_types: [encryption_in_transit]
+    mitigates_threats: [disclosure, detectability]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 0
+    regulations: ["GDPR Art. 32", "PIPL Art. 51", "CSL Art. 21"]
+    audit_evidence: "TLS 1.3 enforcement config; Service Mesh mTLS policy; TLS scan report."
+
+  - id: PC-ENC-02
+    domain: PC-ENC
+    name: "Encryption at Rest & Key Separation (AES-256 / SM4)"
+    pet_types: [encryption_at_rest]
+    mitigates_threats: [disclosure, identifiability]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 0
+    regulations: ["GDPR Art. 32", "PIPL Art. 51"]
+    audit_evidence: "KMS/AES-256 or SM4 IaC configuration; key rotation audit logs."
+
+  - id: PC-ENC-03
+    domain: PC-ENC
+    name: "Strong Pseudonymization & Mapping Table Isolation"
+    pet_types: [pseudonymization]
+    mitigates_threats: [identifiability, linkability]
+    reduces_dimensions: [severity, likelihood]
+    max_likelihood_reduction: 1
+    max_severity_reduction: 1
+    regulations: ["GDPR Art. 4(5)/25/32", "PIPL Art. 51"]
+    audit_evidence: "Tokenization/salted-hash code; isolated mapping table DB & separate KMS access policy."
+
+  - id: PC-ENC-04
+    domain: PC-ENC
+    name: "Irreversible Anonymization (k-Anonymity / l-Diversity)"
+    pet_types: [anonymization]
+    mitigates_threats: [identifiability, linkability, detectability]
+    reduces_dimensions: [severity, likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 2
+    regulations: ["GDPR Recital 26", "PIPL Art. 4/73"]
+    audit_evidence: "Anonymization pipeline code; re-identification attack test report."
+
+  - id: PC-ENC-05
+    domain: PC-ENC
+    name: "Differential Privacy"
+    pet_types: [differential_privacy]
+    mitigates_threats: [linkability, identifiability, detectability]
+    reduces_dimensions: [severity, likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 2
+    regulations: ["GDPR Art. 25", "EU AI Act Art. 10"]
+    audit_evidence: "Privacy budget (epsilon, delta) review doc; noise injection library config & utility report."
+
+  - id: PC-ENC-06
+    domain: PC-ENC
+    name: "Federated Learning / Zero-Knowledge Proofs"
+    pet_types: [federated_learning, zero_knowledge_proof]
+    mitigates_threats: [disclosure, linkability, non_repudiation]
+    reduces_dimensions: [severity, likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 2
+    regulations: ["GDPR Art. 25", "PIPL Art. 51"]
+    audit_evidence: "Architecture review record; protocol security assessment report."
+
+  # ------------------------------------------------------------------
+  # Domain 4: PC-ACC — Access Control & Auditability
+  # ------------------------------------------------------------------
+  - id: PC-ACC-01
+    domain: PC-ACC
+    name: "Least-Privilege Access Control (RBAC / ABAC / JIT)"
+    pet_types: [access_control_rbac]
+    mitigates_threats: [disclosure, linkability]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 0
+    regulations: ["GDPR Art. 32", "CSL Art. 21", "PIPL Art. 51"]
+    audit_evidence: "IAM/RBAC policy files; dual-approval JIT access logs; quarterly access recertification."
+
+  - id: PC-ACC-02
+    domain: PC-ACC
+    name: "Tamper-Evident Access Audit Logging (>= 6 Months)"
+    pet_types: [audit_logging]
+    mitigates_threats: [disclosure, non_compliance]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 1
+    max_severity_reduction: 0
+    regulations: ["CSL Art. 21 (>= 6 months)", "DSL Art. 27", "GDPR Art. 32"]
+    audit_evidence: "SIEM ingestion proof; WORM log protection policy; bulk-export anomaly alert drill."
+
+  # ------------------------------------------------------------------
+  # Domain 5: PC-AI — Algorithm & Automated Decision Governance
+  # ------------------------------------------------------------------
+  - id: PC-AI-01
+    domain: PC-AI
+    name: "Human Oversight, Appeal & Kill-Switch Mechanism"
+    pet_types: [human_in_the_loop]
+    mitigates_threats: [unawareness, non_compliance]
+    reduces_dimensions: [severity, likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 1
+    regulations: ["GDPR Art. 22", "PIPL Art. 24", "EU AI Act Art. 14"]
+    audit_evidence: "Human review SLA SOP; user appeal UI; operator override/kill-switch drill record."
+
+  - id: PC-AI-02
+    domain: PC-AI
+    name: "Personalization Opt-Out & Algorithmic Explainability"
+    pet_types: [privacy_notice_transparency]
+    mitigates_threats: [unawareness, linkability]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 1
+    max_severity_reduction: 0
+    regulations: ["PIPL Art. 24", "EU AI Act Art. 13"]
+    audit_evidence: "Non-personalized mode toggle test video; plain-language key decision factor template."
+
+  - id: PC-AI-03
+    domain: PC-AI
+    name: "High-Risk AI Risk Management & Red-Teaming"
+    pet_types: [security_audit]
+    mitigates_threats: [non_compliance, disclosure]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 1
+    max_severity_reduction: 0
+    regulations: ["EU AI Act Art. 9/15", "NDSR AI Compliance"]
+    audit_evidence: "Adversarial/jailbreak red-team report; robustness benchmark; algorithm filing ID."
+
+  - id: PC-AI-04
+    domain: PC-AI
+    name: "Training Data Legality & Bias Auditing"
+    pet_types: [data_minimization, security_audit]
+    mitigates_threats: [non_compliance, identifiability]
+    reduces_dimensions: [severity, likelihood]
+    max_likelihood_reduction: 1
+    max_severity_reduction: 1
+    regulations: ["EU AI Act Art. 10", "NDSR Generative AI Rules"]
+    audit_evidence: "Dataset Data Card; copyright/consent provenance proof; group fairness/bias test report."
+
+  # ------------------------------------------------------------------
+  # Domain 6: PC-XBD — Cross-Border Transfer & Third-Party Governance
+  # ------------------------------------------------------------------
+  - id: PC-XBD-01
+    domain: PC-XBD
+    name: "EU Cross-Border Transfer Mechanism (SCC / Adequacy / TIA)"
+    pet_types: [scc_transfer_mechanism]
+    mitigates_threats: [non_compliance, disclosure]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 0
+    regulations: ["GDPR Chapter V (Art. 44-49)"]
+    audit_evidence: "Executed EU SCC contract; Transfer Impact Assessment (TIA); supplementary encryption."
+
+  - id: PC-XBD-02
+    domain: PC-XBD
+    name: "China Statutory Cross-Border Path (CAC Assessment / Standard Contract / Exemption)"
+    pet_types: [pipl_security_assessment, pipl_standard_contract]
+    mitigates_threats: [non_compliance, disclosure]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 2
+    max_severity_reduction: 0
+    regulations: ["PIPL Art. 38-40", "CSL Art. 37", "DSL Art. 31", "NDSR Art. 35-39", "2024 Cross-Border Rules"]
+    audit_evidence: "CAC security assessment approval / provincial CAC standard contract filing receipt / exemption memo."
+
+  - id: PC-XBD-03
+    domain: PC-XBD
+    name: "Third-Party DPA / Entrustment Contract & Vendor Due Diligence"
+    pet_types: [dpa_contract]
+    mitigates_threats: [non_compliance, disclosure, linkability]
+    reduces_dimensions: [likelihood]
+    max_likelihood_reduction: 1
+    max_severity_reduction: 0
+    regulations: ["GDPR Art. 28", "PIPL Art. 21/23", "NDSR Art. 29"]
+    audit_evidence: "Executed DPA/entrustment contract; sub-processor list; vendor SOC 2 / ISO 27001/27701 report."

@@ -1,0 +1,1279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dpia-as-code.dev/schemas/v1.0/dataflow.schema.json",
+  "title": "DPIA-as-Code DataFlow Specification (v1.0)",
+  "$defs": {
+    "AIRiskTier": {
+      "description": "EU AI Act (EU 2024/1689) risk classification tiers.",
+      "enum": [
+        "none",
+        "minimal",
+        "limited",
+        "high_risk",
+        "prohibited"
+      ],
+      "title": "AIRiskTier",
+      "type": "string"
+    },
+    "AISystemDeclaration": {
+      "additionalProperties": false,
+      "description": "EU AI Act (EU 2024/1689) and AI governance declaration for the system.",
+      "properties": {
+        "is_ai_system": {
+          "default": true,
+          "description": "Whether the architecture incorporates an AI / ML decision or generation model.",
+          "title": "Is Ai System",
+          "type": "boolean"
+        },
+        "risk_tier": {
+          "$ref": "#/$defs/AIRiskTier",
+          "default": "minimal",
+          "description": "Declared EU AI Act risk tier (none/minimal/limited/high_risk/prohibited)."
+        },
+        "prohibited_practices": {
+          "description": "EU AI Act Art. 5 prohibited AI practices present in this system. Any non-empty value triggers Hard Block red line RL-01.",
+          "items": {
+            "$ref": "#/$defs/ProhibitedAIPractice"
+          },
+          "title": "Prohibited Practices",
+          "type": "array"
+        },
+        "transparency_notice": {
+          "default": false,
+          "description": "Whether natural persons are explicitly informed of AI interaction/generation (Art. 13/50).",
+          "title": "Transparency Notice",
+          "type": "boolean"
+        },
+        "fria_required_override": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional manual override for EU AI Act Art. 27 FRIA requirement.",
+          "title": "Fria Required Override"
+        },
+        "model_card_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Reference URL or path to the AI Model Card / technical documentation.",
+          "title": "Model Card Ref"
+        }
+      },
+      "title": "AISystemDeclaration",
+      "type": "object"
+    },
+    "DPOSignOff": {
+      "additionalProperties": false,
+      "description": "Formal DPO / Privacy Team review sign-off for high/critical risk architectures.",
+      "properties": {
+        "approved": {
+          "default": false,
+          "description": "Whether DPO/Privacy review has approved.",
+          "title": "Approved",
+          "type": "boolean"
+        },
+        "reviewer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Name or handle of the approving DPO.",
+          "title": "Reviewer"
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Date of approval (YYYY-MM-DD).",
+          "title": "Reviewed At"
+        },
+        "ticket": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Reference to review ticket or audit record URL/ID.",
+          "title": "Ticket"
+        }
+      },
+      "title": "DPOSignOff",
+      "type": "object"
+    },
+    "DataAsset": {
+      "additionalProperties": false,
+      "description": "Logical personal data asset flowing through or stored in the architecture.",
+      "properties": {
+        "id": {
+          "description": "Unique identifier referenced by stores and flows.",
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "description": "Human-readable data asset name.",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "categories": {
+          "description": "Standardized data categories contained in this asset.",
+          "items": {
+            "$ref": "#/$defs/DataCategory"
+          },
+          "minItems": 1,
+          "title": "Categories",
+          "type": "array"
+        },
+        "identifiability": {
+          "$ref": "#/$defs/IdentifiabilityLevel",
+          "default": "directly_identifiable",
+          "description": "Degree of identifiability of the data asset."
+        },
+        "is_sensitive_override": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional manual override for statutory sensitivity classification.",
+          "title": "Is Sensitive Override"
+        },
+        "data_classification": {
+          "$ref": "#/$defs/DataClassification",
+          "default": "general",
+          "description": "China DSL Art. 21 & GB/T 43697-2024 data classification (general / important / core)."
+        },
+        "financial_data_level": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FinancialDataLevel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional JR/T 0197 financial data security grading hook (L1-L5) for banking and insurance sector governance."
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Details of fields in this asset.",
+          "title": "Description"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "categories"
+      ],
+      "title": "DataAsset",
+      "type": "object"
+    },
+    "DataCategory": {
+      "description": "Standardized personal data categories mapped to GDPR Art. 9/10 and PIPL Art. 28.",
+      "enum": [
+        "non_personal",
+        "basic_identity",
+        "contact_info",
+        "device_identifier",
+        "online_behavior",
+        "employment_info",
+        "government_id",
+        "biometric",
+        "health_medical",
+        "genetic",
+        "financial_account",
+        "precise_location",
+        "religious_political",
+        "sexual_orientation",
+        "criminal_record",
+        "minor_under_14",
+        "minor_under_16"
+      ],
+      "title": "DataCategory",
+      "type": "string"
+    },
+    "DataClassification": {
+      "description": "China DSL Art. 21 & GB/T 43697-2024 statutory data classification.",
+      "enum": [
+        "general",
+        "important",
+        "core"
+      ],
+      "title": "DataClassification",
+      "type": "string"
+    },
+    "DataFlow": {
+      "additionalProperties": false,
+      "description": "DFD Data Flow: directed transfer of personal data between two DFD nodes.",
+      "properties": {
+        "id": {
+          "description": "Unique DFD identifier for this data flow.",
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional label shown on Mermaid edges and reports.",
+          "title": "Name"
+        },
+        "source": {
+          "description": "Origin node ID (entity, process, or store).",
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "description": "Destination node ID (entity, process, or store).",
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "title": "Target",
+          "type": "string"
+        },
+        "data": {
+          "description": "IDs of declared `data_assets` transmitted over this flow.",
+          "items": {
+            "description": "Unique lowercase identifier (2-64 chars, starting with a letter; letters, digits, hyphens, underscores). Safe for Mermaid node IDs.",
+            "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Data",
+          "type": "array"
+        },
+        "protocol": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "HTTPS/TLS 1.3",
+          "description": "Transport protocol (e.g., HTTPS/TLS 1.3, gRPC, Kafka).",
+          "title": "Protocol"
+        },
+        "encrypted_in_transit": {
+          "default": true,
+          "description": "Whether transport-layer or end-to-end encryption is enforced.",
+          "title": "Encrypted In Transit",
+          "type": "boolean"
+        },
+        "transfer_mechanism": {
+          "$ref": "#/$defs/TransferMechanism",
+          "default": "none",
+          "description": "Legal safeguard applied if this flow crosses jurisdictional borders."
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Purpose or context of this flow.",
+          "title": "Description"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "target",
+        "data"
+      ],
+      "title": "DataFlow",
+      "type": "object"
+    },
+    "DataStore": {
+      "additionalProperties": false,
+      "description": "DFD Data Store: database, object storage, cache, data warehouse, or log sink.",
+      "properties": {
+        "id": {
+          "description": "Unique DFD node ID for this data store.",
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "description": "Display name.",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "technology": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Underlying storage tech (e.g., PostgreSQL, S3, Redis, Milvus).",
+          "title": "Technology"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "description": "ISO-like region/jurisdiction code in uppercase (e.g., CN, EU, US, SG, EU-DE).",
+              "maxLength": 16,
+              "minLength": 2,
+              "pattern": "^[A-Z]{2}(-[A-Z0-9]{1,12})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Physical storage region. Defaults to `metadata.home_region` when omitted.",
+          "title": "Region"
+        },
+        "trust_boundary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Trust zone label (e.g., private_data_tier).",
+          "title": "Trust Boundary"
+        },
+        "data": {
+          "description": "IDs of declared `data_assets` persisted in this store.",
+          "items": {
+            "description": "Unique lowercase identifier (2-64 chars, starting with a letter; letters, digits, hyphens, underscores). Safe for Mermaid node IDs.",
+            "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Data",
+          "type": "array"
+        },
+        "encrypted_at_rest": {
+          "default": false,
+          "description": "Whether data at rest is encrypted (e.g., KMS/AES-256).",
+          "title": "Encrypted At Rest",
+          "type": "boolean"
+        },
+        "retention_days": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum retention duration in days (`null` implies indefinite retention).",
+          "title": "Retention Days"
+        },
+        "access_control": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Access control model (e.g., RBAC, ABAC, least_privilege).",
+          "title": "Access Control"
+        },
+        "audit_logging": {
+          "default": false,
+          "description": "Whether access/read audit logs are recorded and protected.",
+          "title": "Audit Logging",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "data"
+      ],
+      "title": "DataStore",
+      "type": "object"
+    },
+    "DataSubjectCategory": {
+      "description": "Categories of natural persons whose data is processed.",
+      "enum": [
+        "customers",
+        "website_visitors",
+        "employees",
+        "minors",
+        "patients",
+        "elderly",
+        "vulnerable_groups",
+        "business_contacts"
+      ],
+      "title": "DataSubjectCategory",
+      "type": "string"
+    },
+    "EntityRole": {
+      "description": "Role of an external entity in the data lifecycle.",
+      "enum": [
+        "data_subject",
+        "internal_user",
+        "processor",
+        "third_party_controller",
+        "joint_controller",
+        "public_authority"
+      ],
+      "title": "EntityRole",
+      "type": "string"
+    },
+    "ExternalEntity": {
+      "additionalProperties": false,
+      "description": "DFD External Entity: data subjects, internal operators, or third-party recipients.",
+      "properties": {
+        "id": {
+          "description": "Unique DFD node ID for this entity.",
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "description": "Display name.",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/EntityRole",
+          "description": "Privacy/legal role of this external entity."
+        },
+        "region": {
+          "anyOf": [
+            {
+              "description": "ISO-like region/jurisdiction code in uppercase (e.g., CN, EU, US, SG, EU-DE).",
+              "maxLength": 16,
+              "minLength": 2,
+              "pattern": "^[A-Z]{2}(-[A-Z0-9]{1,12})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Jurisdiction/region code. Defaults to `metadata.home_region` when omitted.",
+          "title": "Region"
+        },
+        "trust_boundary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Trust zone label for Mermaid subgraph grouping.",
+          "title": "Trust Boundary"
+        },
+        "dpa_signed": {
+          "default": false,
+          "description": "Whether a Data Processing Agreement (DPA) / entrustment contract is executed.",
+          "title": "Dpa Signed",
+          "type": "boolean"
+        },
+        "notice_provided": {
+          "default": true,
+          "description": "For data subjects: whether a clear privacy notice is presented.",
+          "title": "Notice Provided",
+          "type": "boolean"
+        },
+        "opt_out_available": {
+          "default": false,
+          "description": "For data subjects: whether opt-out / consent withdrawal mechanism is provided.",
+          "title": "Opt Out Available",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "role"
+      ],
+      "title": "ExternalEntity",
+      "type": "object"
+    },
+    "FinancialDataLevel": {
+      "description": "Optional JR/T 0197 financial data security grading hook (Level 1 to Level 5).",
+      "enum": [
+        "L1",
+        "L2",
+        "L3",
+        "L4",
+        "L5"
+      ],
+      "title": "FinancialDataLevel",
+      "type": "string"
+    },
+    "IdentifiabilityLevel": {
+      "description": "Degree to which a data asset can identify a natural person.",
+      "enum": [
+        "directly_identifiable",
+        "pseudonymized",
+        "aggregated",
+        "anonymized"
+      ],
+      "title": "IdentifiabilityLevel",
+      "type": "string"
+    },
+    "IndustrySector": {
+      "description": "Industry sector tag enabling optional sector-specific GRC rule packs.",
+      "enum": [
+        "general",
+        "banking",
+        "insurance",
+        "fintech",
+        "healthcare",
+        "other"
+      ],
+      "title": "IndustrySector",
+      "type": "string"
+    },
+    "Jurisdiction": {
+      "description": "Supported privacy, data security, and AI regulatory frameworks.",
+      "enum": [
+        "GDPR",
+        "PIPL",
+        "EU_AI_ACT",
+        "CN_DSL_NDSR",
+        "CN_FIN_NFRA"
+      ],
+      "title": "Jurisdiction",
+      "type": "string"
+    },
+    "LINDDUNCategory": {
+      "description": "The 7 LINDDUN privacy threat categories.",
+      "enum": [
+        "linkability",
+        "identifiability",
+        "non_repudiation",
+        "detectability",
+        "disclosure",
+        "unawareness",
+        "non_compliance"
+      ],
+      "title": "LINDDUNCategory",
+      "type": "string"
+    },
+    "LawfulBasis": {
+      "description": "Legal basis for processing under GDPR Art. 6 and PIPL Art. 13.",
+      "enum": [
+        "consent",
+        "separate_consent",
+        "contract",
+        "legal_obligation",
+        "vital_interests",
+        "public_task",
+        "legitimate_interests",
+        "hr_management",
+        "publicly_available",
+        "unspecified"
+      ],
+      "title": "LawfulBasis",
+      "type": "string"
+    },
+    "Mitigation": {
+      "additionalProperties": false,
+      "description": "Privacy-Enhancing Technology (PET) or governance safeguard applied to elements.",
+      "properties": {
+        "id": {
+          "description": "Unique mitigation identifier.",
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "control_id": {
+          "anyOf": [
+            {
+              "description": "Standardized privacy/security control ID from governance/04_control_catalog.md (e.g., PC-GOV-01, PC-ENC-02, PC-AI-01).",
+              "pattern": "^PC-(GOV|DAT|ENC|ACC|AI|XBD)-\\d{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Standardized control ID from governance/04_control_catalog.md & rules/control_catalog.yaml (e.g., PC-ENC-02, PC-AI-01).",
+          "title": "Control Id"
+        },
+        "pet_type": {
+          "$ref": "#/$defs/PETType",
+          "description": "Standardized PET or control category."
+        },
+        "description": {
+          "description": "Concrete description of how this control is implemented.",
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "applies_to": {
+          "description": "List of element IDs (entity/process/store/flow) or ['*'] for system-wide.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Applies To",
+          "type": "array"
+        },
+        "addresses_threats": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/LINDDUNCategory"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional explicit LINDDUN threats mitigated. If omitted, inferred from the built-in PET-to-LINDDUN knowledge base.",
+          "title": "Addresses Threats"
+        },
+        "status": {
+          "$ref": "#/$defs/MitigationStatus",
+          "default": "planned",
+          "description": "Implementation maturity. Only implemented/verified controls fully reduce risk."
+        },
+        "evidence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Verifiable evidence reference (PR URL, IaC path, audit report ID, or ticket).",
+          "title": "Evidence"
+        },
+        "owner": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Responsible engineer or team.",
+          "title": "Owner"
+        }
+      },
+      "required": [
+        "id",
+        "pet_type",
+        "description",
+        "applies_to"
+      ],
+      "title": "Mitigation",
+      "type": "object"
+    },
+    "MitigationStatus": {
+      "description": "Verification maturity of a declared mitigation control.",
+      "enum": [
+        "planned",
+        "implemented",
+        "verified"
+      ],
+      "title": "MitigationStatus",
+      "type": "string"
+    },
+    "PETType": {
+      "description": "Privacy-Enhancing Technologies (PETs) and organizational safeguards.",
+      "enum": [
+        "encryption_in_transit",
+        "encryption_at_rest",
+        "pseudonymization",
+        "anonymization",
+        "differential_privacy",
+        "data_minimization",
+        "access_control_rbac",
+        "purpose_limitation",
+        "consent_management",
+        "privacy_notice_transparency",
+        "human_in_the_loop",
+        "retention_enforcement",
+        "federated_learning",
+        "zero_knowledge_proof",
+        "data_masking",
+        "audit_logging",
+        "dpa_contract",
+        "scc_transfer_mechanism",
+        "pipl_security_assessment",
+        "pipl_standard_contract",
+        "security_audit",
+        "other"
+      ],
+      "title": "PETType",
+      "type": "string"
+    },
+    "ProcessNode": {
+      "additionalProperties": false,
+      "description": "DFD Process: microservice, API endpoint, ML inference pipeline, or batch job.",
+      "properties": {
+        "id": {
+          "description": "Unique DFD node ID for this process.",
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "description": "Display name.",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "What this process does.",
+          "title": "Description"
+        },
+        "operations": {
+          "description": "Processing operations executed by this component.",
+          "items": {
+            "$ref": "#/$defs/ProcessingOperation"
+          },
+          "minItems": 1,
+          "title": "Operations",
+          "type": "array"
+        },
+        "purposes": {
+          "description": "Explicit business/legal purposes (populates GDPR Art. 30 RoPA).",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Purposes",
+          "type": "array"
+        },
+        "lawful_basis": {
+          "$ref": "#/$defs/LawfulBasis",
+          "default": "unspecified",
+          "description": "Lawful basis for processing under GDPR Art. 6 / PIPL Art. 13."
+        },
+        "region": {
+          "anyOf": [
+            {
+              "description": "ISO-like region/jurisdiction code in uppercase (e.g., CN, EU, US, SG, EU-DE).",
+              "maxLength": 16,
+              "minLength": 2,
+              "pattern": "^[A-Z]{2}(-[A-Z0-9]{1,12})?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Deployment region. Defaults to `metadata.home_region` when omitted.",
+          "title": "Region"
+        },
+        "trust_boundary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Trust zone label (e.g., vpc_core, dmz).",
+          "title": "Trust Boundary"
+        },
+        "innovative_technology": {
+          "default": false,
+          "description": "Uses innovative/emerging tech (e.g., GenAI, facial recognition, IoT).",
+          "title": "Innovative Technology",
+          "type": "boolean"
+        },
+        "prevents_rights_or_service": {
+          "default": false,
+          "description": "Output can deny a service, contract, or legal right (WP29 Criterion #9, e.g., automated credit rejection or account ban).",
+          "title": "Prevents Rights Or Service",
+          "type": "boolean"
+        },
+        "human_review_available": {
+          "default": false,
+          "description": "Whether meaningful human-in-the-loop review exists for automated decisions.",
+          "title": "Human Review Available",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "purposes"
+      ],
+      "title": "ProcessNode",
+      "type": "object"
+    },
+    "ProcessingOperation": {
+      "description": "Semantic operations performed by a Process node.",
+      "enum": [
+        "collection",
+        "storage",
+        "profiling",
+        "scoring",
+        "automated_decision_making",
+        "systematic_monitoring",
+        "dataset_matching",
+        "ai_training",
+        "biometric_identification",
+        "public_disclosure",
+        "analytics",
+        "archival",
+        "deletion"
+      ],
+      "title": "ProcessingOperation",
+      "type": "string"
+    },
+    "ProcessingScale": {
+      "description": "Scale of personal data processing.",
+      "enum": [
+        "small",
+        "medium",
+        "large"
+      ],
+      "title": "ProcessingScale",
+      "type": "string"
+    },
+    "ProhibitedAIPractice": {
+      "description": "EU AI Act Art. 5 prohibited AI practices (Zero-Tolerance Red Line RL-01).",
+      "enum": [
+        "social_scoring",
+        "untargeted_facial_scraping",
+        "workplace_education_emotion_recognition",
+        "subliminal_manipulation",
+        "biometric_sensitive_inference",
+        "realtime_remote_biometric_public"
+      ],
+      "title": "ProhibitedAIPractice",
+      "type": "string"
+    },
+    "RiskWaiver": {
+      "additionalProperties": false,
+      "description": "Time-bounded Risk Acceptance / Waiver record (governance/01_governance_policy.md §4).\n\nStatutory red lines (RL-01..RL-05) are strictly non-waivable.",
+      "properties": {
+        "waiver_id": {
+          "description": "Unique waiver identifier (e.g., waiver_credit_2026q1).",
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "title": "Waiver Id",
+          "type": "string"
+        },
+        "target_findings": {
+          "description": "Finding IDs or element IDs covered by this waiver (cannot target RL-01..RL-05).",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Target Findings",
+          "type": "array"
+        },
+        "risk_level": {
+          "description": "Risk tier being waived: 'high' (max 90 days) or 'critical' (max 30 days).",
+          "enum": [
+            "high",
+            "critical"
+          ],
+          "title": "Risk Level",
+          "type": "string"
+        },
+        "business_justification": {
+          "description": "Substantive business necessity explaining why pre-launch remediation is infeasible.",
+          "minLength": 10,
+          "title": "Business Justification",
+          "type": "string"
+        },
+        "compensating_controls": {
+          "description": "Temporary compensating controls active during the waiver window.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Compensating Controls",
+          "type": "array"
+        },
+        "remediation_ticket": {
+          "description": "Tracking ticket or PR reference for permanent remediation.",
+          "minLength": 1,
+          "title": "Remediation Ticket",
+          "type": "string"
+        },
+        "owner": {
+          "description": "Business/engineering owner accountable for closure.",
+          "minLength": 1,
+          "title": "Owner",
+          "type": "string"
+        },
+        "approved_by": {
+          "description": "Approving DPO (High) or C-Level/VP + DPO (Critical).",
+          "minLength": 1,
+          "title": "Approved By",
+          "type": "string"
+        },
+        "approved_at": {
+          "description": "Waiver approval date (YYYY-MM-DD).",
+          "format": "date",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "expires_at": {
+          "description": "Mandatory hard expiration date (YYYY-MM-DD). Auto-reverts CI gate to BLOCK on expiry.",
+          "format": "date",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "renewal_count": {
+          "default": 0,
+          "description": "Number of renewals used (governance policy allows at most 1 renewal).",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Renewal Count",
+          "type": "integer"
+        },
+        "excludes_red_lines": {
+          "default": true,
+          "description": "Mandatory attestation confirming no statutory red line (RL-01..RL-05) is waived.",
+          "title": "Excludes Red Lines",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "waiver_id",
+        "target_findings",
+        "risk_level",
+        "business_justification",
+        "compensating_controls",
+        "remediation_ticket",
+        "owner",
+        "approved_by",
+        "approved_at",
+        "expires_at"
+      ],
+      "title": "RiskWaiver",
+      "type": "object"
+    },
+    "SystemMetadata": {
+      "additionalProperties": false,
+      "description": "Top-level governance metadata for the system or feature being assessed.",
+      "properties": {
+        "system_id": {
+          "description": "Unique identifier for this system or service.",
+          "pattern": "^[a-z][a-z0-9_-]{1,63}$",
+          "title": "System Id",
+          "type": "string"
+        },
+        "name": {
+          "description": "Human-readable system name.",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Short architecture summary.",
+          "title": "Description"
+        },
+        "controller": {
+          "description": "Legal entity acting as Data Controller / Personal Information Handler.",
+          "minLength": 1,
+          "title": "Controller",
+          "type": "string"
+        },
+        "dpo_contact": {
+          "description": "Contact email or team handle of the DPO / Privacy Engineering team.",
+          "minLength": 1,
+          "title": "Dpo Contact",
+          "type": "string"
+        },
+        "jurisdictions": {
+          "description": "Regulatory frameworks to evaluate against.",
+          "items": {
+            "$ref": "#/$defs/Jurisdiction"
+          },
+          "minItems": 1,
+          "title": "Jurisdictions",
+          "type": "array"
+        },
+        "home_region": {
+          "description": "Primary legal/deployment region of the controller (e.g., CN, EU, US).",
+          "maxLength": 16,
+          "minLength": 2,
+          "pattern": "^[A-Z]{2}(-[A-Z0-9]{1,12})?$",
+          "title": "Home Region",
+          "type": "string"
+        },
+        "data_subjects": {
+          "description": "Categories of natural persons whose data is processed.",
+          "items": {
+            "$ref": "#/$defs/DataSubjectCategory"
+          },
+          "minItems": 1,
+          "title": "Data Subjects",
+          "type": "array"
+        },
+        "estimated_subjects": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Estimated count of affected individuals (used to infer processing scale).",
+          "title": "Estimated Subjects"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProcessingScale"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Processing scale (small/medium/large). Automatically inferred from `estimated_subjects` if omitted."
+        },
+        "dpo_signoff": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DPOSignOff"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional DPO approval metadata for critical/high-risk gates."
+        },
+        "is_ciio": {
+          "default": false,
+          "description": "Whether the controller is designated as a Critical Information Infrastructure Operator (CIIO) under China CSL Art. 37 / CIIO Regulations.",
+          "title": "Is Ciio",
+          "type": "boolean"
+        },
+        "industry_sector": {
+          "$ref": "#/$defs/IndustrySector",
+          "default": "general",
+          "description": "Optional industry sector tag (e.g., general, banking, insurance) reserving a clean extension hook for sector-specific GRC packs such as NFRA financial rules."
+        },
+        "ai_system": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AISystemDeclaration"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional EU AI Act (EU 2024/1689) and AI governance declaration."
+        },
+        "risk_waivers": {
+          "description": "Time-bounded risk acceptance waivers (forbidden for statutory red lines).",
+          "items": {
+            "$ref": "#/$defs/RiskWaiver"
+          },
+          "title": "Risk Waivers",
+          "type": "array"
+        }
+      },
+      "required": [
+        "system_id",
+        "name",
+        "controller",
+        "dpo_contact",
+        "home_region"
+      ],
+      "title": "SystemMetadata",
+      "type": "object"
+    },
+    "TransferMechanism": {
+      "description": "Legal mechanism authorizing cross-border data transfers.",
+      "enum": [
+        "none",
+        "adequacy_decision",
+        "scc",
+        "bcr",
+        "pipl_security_assessment",
+        "pipl_standard_contract",
+        "pipl_certification",
+        "pipl_exemption",
+        "explicit_consent_derogation"
+      ],
+      "title": "TransferMechanism",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Root specification model for a `dataflow.yaml` file.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "description": "Specification schema version.",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/SystemMetadata",
+      "description": "System governance and regulatory context."
+    },
+    "data_assets": {
+      "description": "Catalog of personal data assets processed by the system.",
+      "items": {
+        "$ref": "#/$defs/DataAsset"
+      },
+      "minItems": 1,
+      "title": "Data Assets",
+      "type": "array"
+    },
+    "entities": {
+      "description": "External entities (users, third parties, regulators).",
+      "items": {
+        "$ref": "#/$defs/ExternalEntity"
+      },
+      "title": "Entities",
+      "type": "array"
+    },
+    "processes": {
+      "description": "Processing components (APIs, services, ML pipelines).",
+      "items": {
+        "$ref": "#/$defs/ProcessNode"
+      },
+      "minItems": 1,
+      "title": "Processes",
+      "type": "array"
+    },
+    "stores": {
+      "description": "Persistent or temporary data stores.",
+      "items": {
+        "$ref": "#/$defs/DataStore"
+      },
+      "title": "Stores",
+      "type": "array"
+    },
+    "flows": {
+      "description": "Directed data flows linking entities, processes, and stores.",
+      "items": {
+        "$ref": "#/$defs/DataFlow"
+      },
+      "minItems": 1,
+      "title": "Flows",
+      "type": "array"
+    },
+    "mitigations": {
+      "description": "Declared privacy controls and PETs.",
+      "items": {
+        "$ref": "#/$defs/Mitigation"
+      },
+      "title": "Mitigations",
+      "type": "array"
+    }
+  },
+  "required": [
+    "metadata",
+    "data_assets",
+    "processes",
+    "flows"
+  ],
+  "type": "object"
+}

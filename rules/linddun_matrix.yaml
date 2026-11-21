@@ -1,0 +1,107 @@
+# Policy-as-Code: LINDDUN Threat Mapping, CNIL x GB/T 39335 Scoring & Gate Appetite
+# 1:1 machine-readable mirror of governance/01_governance_policy.md §3.2 & governance/03_assessment_methodology.md
+
+schema_version: "1.0"
+policy_ref: "METH-PRIV-003"
+
+# Official LINDDUN DFD Element -> Threat Mapping Matrix
+dfd_linddun_matrix:
+  external_entity:
+    - linkability
+    - identifiability
+    - unawareness
+    - non_compliance
+  data_flow:
+    - linkability
+    - identifiability
+    - non_repudiation
+    - detectability
+    - disclosure
+    - non_compliance
+  data_store:
+    - linkability
+    - identifiability
+    - non_repudiation
+    - detectability
+    - disclosure
+    - non_compliance
+  process:
+    - linkability
+    - identifiability
+    - non_repudiation
+    - detectability
+    - disclosure
+    - unawareness
+    - non_compliance
+
+# Secondary pruning / elevation rules to reduce false positives
+pruning_rules:
+  exclude_anonymized_for_privacy_threats: true
+  exclude_non_personal_unless_important_data: true
+  elevate_linkability_on_operations:
+    - dataset_matching
+    - profiling
+    - scoring
+  elevate_disclosure_when_unencrypted: true
+  trigger_unawareness_on_missing_notice_or_opt_out: true
+
+# CNIL PIA x GB/T 39335 4x4 Scoring Rubric (1..4)
+scoring_rubric:
+  severity_anchors:
+    1: "Negligible - minimal inconvenience, fully reversible"
+    2: "Limited - moderate inconvenience or localized exposure, surmountable"
+    3: "Significant - financial loss, discrimination, service denial, sensitive/large-scale impact"
+    4: "Maximum - irreversible harm (biometric/genetic, minors <14, high-risk AI, important/core/CIIO data, >=10M subjects)"
+  likelihood_anchors:
+    1: "Negligible - isolated internal network, full encryption, least privilege, strong pseudonymization"
+    2: "Limited - internal service calls with baseline protection but minor governance gaps"
+    3: "Significant - public exposure, third-party sharing, dataset fusion, or missing human review"
+    4: "Maximum - glaring statutory defect (plaintext sensitive data, unlawful cross-border, unspecified lawful basis)"
+  matrix_thresholds:
+    low: { min: 1, max: 4 }
+    medium: { min: 5, max: 8 }
+    high: { min: 9, max: 12 }
+    critical: { min: 13, max: 16 }
+
+# Control Maturity Discounting Rules (Preventing Checkbox Compliance)
+maturity_discounting:
+  planned:
+    likelihood_factor: 0.0
+    severity_factor: 0.0
+    counts_as_effective: false
+  implemented:
+    likelihood_factor: 0.5
+    severity_factor: 0.5
+    max_step_reduction: 1
+    counts_as_effective: true
+  verified:
+    likelihood_factor: 1.0
+    severity_factor: 1.0
+    requires_evidence: true
+    counts_as_effective: true
+  score_floor: 1
+
+# Risk Appetite & CI/CD Gate Decision Policy (governance/01_governance_policy.md §3.2)
+risk_appetite_gate:
+  low:
+    action: pass
+    exit_code: 0
+    review_cycle_days: 365
+  medium:
+    action: warn
+    exit_code: 0
+    remediation_sla_workdays: 14
+    review_cycle_days: 180
+  high:
+    action: block
+    exit_code: 1
+    waiver_allowed: true
+    max_waiver_days: 90
+  critical:
+    action: block
+    exit_code: 1
+    waiver_allowed: true
+    max_waiver_days: 30
+    requires_dpo_and_executive_signoff: true
+    requires_regulatory_consultation_check: true
+  high_inherent_requires_dpo_signoff: true

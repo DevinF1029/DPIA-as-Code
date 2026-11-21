@@ -1,0 +1,94 @@
+# yaml-language-server: $schema=../schemas/dataflow.schema.json
+schema_version: "1.0"
+
+metadata:
+  system_id: corp-marketing-site
+  name: Corporate Marketing Website & Contact Form
+  description: Low-volume B2B contact inquiry form hosted entirely inside the EU.
+  controller: Acme Software GmbH
+  dpo_contact: privacy@acme-example.eu
+  jurisdictions:
+    - GDPR
+    - PIPL
+  home_region: EU-DE
+  data_subjects:
+    - business_contacts
+  estimated_subjects: 2500
+
+data_assets:
+  - id: inquiry_contact
+    name: Business Contact Inquiry
+    categories:
+      - basic_identity
+      - contact_info
+    identifiability: directly_identifiable
+    description: Work email, name, and free-text message submitted on the contact page.
+
+entities:
+  - id: site_visitor
+    name: Prospective B2B Customer
+    role: data_subject
+    trust_boundary: public_internet
+    notice_provided: true
+    opt_out_available: true
+
+processes:
+  - id: contact_api
+    name: Contact Form Submission Service
+    operations:
+      - collection
+      - storage
+    purposes:
+      - Respond to inbound B2B product inquiries
+    lawful_basis: consent
+    trust_boundary: eu_vpc
+
+stores:
+  - id: inquiry_db
+    name: Inquiry PostgreSQL Database
+    technology: PostgreSQL
+    trust_boundary: eu_vpc
+    data:
+      - inquiry_contact
+    encrypted_at_rest: true
+    retention_days: 90
+    access_control: RBAC
+    audit_logging: true
+
+flows:
+  - id: flow_submit_inquiry
+    name: Submit Contact Form
+    source: site_visitor
+    target: contact_api
+    data:
+      - inquiry_contact
+    protocol: HTTPS/TLS 1.3
+    encrypted_in_transit: true
+
+  - id: flow_persist_inquiry
+    name: Save Inquiry Record
+    source: contact_api
+    target: inquiry_db
+    data:
+      - inquiry_contact
+    protocol: PostgreSQL/TLS
+    encrypted_in_transit: true
+
+mitigations:
+  - id: mit_storage_enc
+    pet_type: encryption_at_rest
+    description: RDS PostgreSQL encrypted with AWS KMS in eu-central-1.
+    applies_to:
+      - inquiry_db
+    status: verified
+    evidence: terraform/eu-rds.tf#L42
+    owner: web-infra
+
+  - id: mit_retention_cron
+    pet_type: retention_enforcement
+    description: Automated nightly job purges inquiries older than 90 days.
+    applies_to:
+      - inquiry_db
+    status: implemented
+    evidence: jobs/purge_inquiries.py
+    owner: web-infra

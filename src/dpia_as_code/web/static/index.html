@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DPIA-as-Code | 隐私与数据安全合规评估工作台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="/static/app.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <style type="text/tailwindcss">
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      font-feature-settings: "tnum" on, "lnum" on;
+    }
+    code, .mono {
+      font-family: "Cascadia Code", "JetBrains Mono", Consolas, "SFMono-Regular", monospace;
+    }
+    .panel { @apply bg-white rounded-md border border-zinc-200; }
+    .inp { @apply w-full rounded border border-zinc-300 px-2.5 py-1.5 text-[13px] text-zinc-900 focus:outline-none focus:border-slate-700 focus:ring-1 focus:ring-slate-300 bg-white; }
+    .lbl { @apply block text-[12px] font-medium text-zinc-600 mb-1; }
+    .tag { @apply cursor-pointer select-none rounded border border-zinc-300 bg-white px-2 py-0.5 text-[12px] text-zinc-700 hover:border-zinc-500 transition-colors; }
+    .tag-on { @apply bg-slate-800 border-slate-800 text-white hover:border-slate-800; }
+    .tag-danger.tag-on { @apply bg-red-700 border-red-700 text-white hover:border-red-700; }
+    .tab { @apply px-3 py-2.5 text-[13px] font-medium text-zinc-500 border-b-2 border-transparent hover:text-zinc-900 whitespace-nowrap transition-colors; }
+    .tab-on { @apply text-slate-900 border-slate-900; }
+    .btn { @apply inline-flex items-center justify-center gap-1.5 rounded px-3 py-1.5 text-[13px] font-medium transition-colors cursor-pointer; }
+    .btn-dark { @apply bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-40; }
+    .btn-outline { @apply bg-white text-zinc-700 border border-zinc-300 hover:bg-zinc-50 disabled:opacity-40; }
+    .btn-add { @apply w-full bg-white text-zinc-700 border border-zinc-300 hover:bg-zinc-50 hover:border-zinc-400 text-[13px]; }
+    .item { @apply rounded border border-zinc-200 bg-zinc-50/70 p-3 space-y-2.5; }
+    .tog { @apply inline-flex items-center gap-1.5 text-[13px] text-zinc-700 cursor-pointer; }
+    .th { @apply text-left text-[12px] font-semibold text-zinc-600 px-2.5 py-2 bg-zinc-50 border-b border-zinc-200; }
+    .td { @apply px-2.5 py-2 border-b border-zinc-100 align-top text-[13px] text-zinc-800; }
+    .badge { @apply inline-block rounded px-1.5 py-0.5 text-[11px] font-medium; }
+    .prose-report table { @apply w-full text-[12px] border-collapse my-2.5; }
+    .prose-report th, .prose-report td { @apply border border-zinc-200 px-2.5 py-1.5 align-top text-left; }
+    .prose-report th { @apply bg-zinc-50 font-semibold; }
+    .prose-report h1 { @apply text-lg font-semibold text-zinc-900 border-b border-zinc-300 pb-1.5 mb-3; }
+    .prose-report h2 { @apply text-[15px] font-semibold text-zinc-900 mt-5 mb-2 border-l-2 border-slate-800 pl-2.5; }
+    .prose-report h3 { @apply text-[14px] font-semibold text-zinc-800 mt-3 mb-1; }
+    .prose-report blockquote { @apply border-l-2 border-zinc-400 bg-zinc-50 px-3 py-1.5 my-2 text-zinc-600 text-[12px]; }
+    .prose-report ul { @apply list-disc pl-5 text-[13px] space-y-0.5; }
+    .prose-report ol { @apply list-decimal pl-5 text-[13px] space-y-0.5; }
+    .prose-report p { @apply text-[13px] my-1.5 leading-relaxed; }
+    .prose-report code { @apply bg-zinc-100 rounded px-1 text-[12px]; }
+    .prose-report .dfd-print svg { max-width: 100%; height: auto; }
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-zinc-100 text-zinc-900 text-[13px] leading-relaxed" x-data="workbench()" x-cloak>
+
+  <!-- ============ Top Bar ============ -->
+  <header class="bg-white border-b border-zinc-200 sticky top-0 z-20">
+    <div class="max-w-[1760px] mx-auto px-5 py-2.5 flex flex-wrap items-center gap-2.5">
+      <div class="mr-auto flex items-baseline gap-3">
+        <span class="font-semibold text-[16px] tracking-tight text-zinc-950">DPIA-as-Code</span>
+        <span class="text-[12px] text-zinc-500 hidden sm:inline">隐私、数据安全与 AI 合规影响评估工作台</span>
+      </div>
+
+      <select class="rounded border border-zinc-300 bg-white text-[13px] px-2.5 py-1.5 text-zinc-800 max-w-[260px]" x-model="selectedExample" @change="loadExample(selectedExample)">
+        <option value="">载入内置示例模板...</option>
+        <template x-for="ex in meta.examples" :key="ex.id">
+          <option :value="ex.id" x-text="ex.title"></option>
+        </template>
+      </select>
+
+      <button class="btn btn-outline" @click="newBlank()">新建</button>
+      <label class="btn btn-outline">导入 YAML<input type="file" accept=".yaml,.yml" class="hidden" @change="importYaml($event)"></label>
+      <button class="btn btn-outline" @click="exportYaml()">导出 YAML</button>
+      <button class="btn btn-outline" @click="exportMarkdown()" :disabled="!result">下载 Markdown</button>
+      <button class="btn btn-dark" @click="printReport()" :disabled="!result">打印 / 导出 PDF</button>
+    </div>
+  </header>
+
+  <main class="max-w-[1760px] mx-auto p-4 grid grid-cols-1 xl:grid-cols-12 gap-4">
+
+    <!-- ============ LEFT: Structured Form ============ -->
+    <section class="xl:col-span-5 panel flex flex-col max-h-[calc(100vh-84px)]">
+      <div class="px-4 pt-2 border-b border-zinc-200">
+        <nav class="flex overflow-x-auto -mb-px gap-1">
+          <button class="tab" :class="leftTab==='system'&&'tab-on'" @click="leftTab='system'">系统与法域</button>
+          <button class="tab" :class="leftTab==='assets'&&'tab-on'" @click="leftTab='assets'">数据资产 <span class="text-[11px] text-zinc-400" x-text="`(${spec.data_assets.length})`"></span></button>
+          <button class="tab" :class="leftTab==='nodes'&&'tab-on'" @click="leftTab='nodes'">架构节点</button>
+          <button class="tab" :class="leftTab==='flows'&&'tab-on'" @click="leftTab='flows'">数据流 <span class="text-[11px] text-zinc-400" x-text="`(${spec.flows.length})`"></span></button>
+          <button class="tab" :class="leftTab==='controls'&&'tab-on'" @click="leftTab='controls'">控制与豁免</button>
+        </nav>
+      </div>
+
+      <div class="overflow-y-auto p-4 space-y-4 flex-1">
+
+        <!-- Tab 1: System -->
+        <div x-show="leftTab==='system'" class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="col-span-2"><span class="lbl">系统 / 功能名称</span><input class="inp" x-model="spec.metadata.name"></div>
+            <div><span class="lbl">系统标识（英文小写/连字符）</span><input class="inp mono" x-model="spec.metadata.system_id"></div>
+            <div><span class="lbl">主要部署地区代码</span><input class="inp mono" x-model="spec.metadata.home_region" placeholder="CN / EU-DE / US"></div>
+            <div class="col-span-2"><span class="lbl">系统概述</span><textarea class="inp" rows="2" x-model="spec.metadata.description"></textarea></div>
+            <div><span class="lbl">数据控制者 / 处理者</span><input class="inp" x-model="spec.metadata.controller"></div>
+            <div><span class="lbl">DPO / 合规联系人</span><input class="inp" x-model="spec.metadata.dpo_contact"></div>
+            <div><span class="lbl">预估受影响自然人数</span><input type="number" min="0" class="inp" x-model.number="spec.metadata.estimated_subjects"></div>
+            <div><span class="lbl">行业板块</span>
+              <select class="inp" x-model="spec.metadata.industry_sector"><template x-for="o in opts('IndustrySector')" :key="o.value"><option :value="o.value" x-text="o.label"></option></template></select></div>
+          </div>
+
+          <div><span class="lbl">适用法域</span>
+            <div class="flex flex-wrap gap-1.5"><template x-for="o in opts('Jurisdiction')" :key="o.value">
+              <label class="tag" :class="spec.metadata.jurisdictions.includes(o.value)&&'tag-on'"><input type="checkbox" class="hidden" :value="o.value" x-model="spec.metadata.jurisdictions"><span x-text="o.label"></span></label>
+            </template></div></div>
+
+          <div><span class="lbl">涉及的数据主体类别</span>
+            <div class="flex flex-wrap gap-1.5"><template x-for="o in opts('DataSubjectCategory')" :key="o.value">
+              <label class="tag" :class="spec.metadata.data_subjects.includes(o.value)&&'tag-on'"><input type="checkbox" class="hidden" :value="o.value" x-model="spec.metadata.data_subjects"><span x-text="o.label"></span></label>
+            </template></div></div>
+
+          <label class="tog item w-full"><input type="checkbox" x-model="spec.metadata.is_ciio"> <span><strong>关键信息基础设施运营者（CIIO）</strong><span class="text-zinc-500 ml-1">境内存储、出境安全评估与年度测评</span></span></label>
+
+          <div class="item">
+            <label class="tog font-medium"><input type="checkbox" x-model="spec.metadata._ai_enabled">启用 AI 系统声明（EU AI Act）</label>
+            <div x-show="spec.metadata._ai_enabled" class="grid grid-cols-2 gap-3 pt-1">
+              <div><span class="lbl">AI 风险分级</span>
+                <select class="inp" x-model="spec.metadata.ai_system.risk_tier"><template x-for="o in opts('AIRiskTier')" :key="o.value"><option :value="o.value" x-text="o.label"></option></template></select></div>
+              <div><span class="lbl">模型卡片（Model Card）引用</span><input class="inp" x-model="spec.metadata.ai_system.model_card_ref"></div>
+              <label class="tog col-span-2"><input type="checkbox" x-model="spec.metadata.ai_system.transparency_notice">已向自然人明确告知 AI 交互或生成属性</label>
+              <div class="col-span-2"><span class="lbl text-red-700">Art. 5 禁止类实践（命中将触发红线 RL-01）</span>
+                <div class="flex flex-wrap gap-1.5"><template x-for="o in opts('ProhibitedAIPractice')" :key="o.value">
+                  <label class="tag tag-danger" :class="spec.metadata.ai_system.prohibited_practices.includes(o.value)&&'tag-on'"><input type="checkbox" class="hidden" :value="o.value" x-model="spec.metadata.ai_system.prohibited_practices"><span x-text="o.label"></span></label>
+                </template></div></div>
+            </div>
+          </div>
+
+          <div class="item">
+            <label class="tog font-medium"><input type="checkbox" x-model="spec.metadata._signoff_enabled">DPO / 合规负责人签批记录</label>
+            <div x-show="spec.metadata._signoff_enabled" class="grid grid-cols-2 gap-3 pt-1">
+              <label class="tog col-span-2"><input type="checkbox" x-model="spec.metadata.dpo_signoff.approved">DPO 已审批通过（固有风险为极高时上线必需）</label>
+              <div><span class="lbl">审批人</span><input class="inp" x-model="spec.metadata.dpo_signoff.reviewer"></div>
+              <div><span class="lbl">审批日期</span><input type="date" class="inp" x-model="spec.metadata.dpo_signoff.reviewed_at"></div>
+              <div class="col-span-2"><span class="lbl">审批工单编号</span><input class="inp" x-model="spec.metadata.dpo_signoff.ticket"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Assets -->
+        <div x-show="leftTab==='assets'" class="space-y-3">
+          <p class="text-[12px] text-zinc-500">登记系统处理的每类数据资产。敏感类别与分类分级直接决定影响严重度（S）与强制评估触发。</p>
+          <template x-for="(a, idx) in spec.data_assets" :key="idx">
+            <div class="item">
+              <div class="flex gap-2 items-end">
+                <div class="flex-1"><span class="lbl">资产名称</span><input class="inp" x-model="a.name"></div>
+                <div class="w-40"><span class="lbl">资产 ID</span><input class="inp mono text-[12px]" x-model="a.id"></div>
+                <button class="text-zinc-400 hover:text-red-700 text-[12px] px-1.5 py-1.5" @click="remove(spec.data_assets, idx)">删除</button>
+              </div>
+              <div><span class="lbl">数据类别（可多选）</span>
+                <div class="flex flex-wrap gap-1.5"><template x-for="o in opts('DataCategory')" :key="o.value">
+                  <label class="tag" :class="a.categories.includes(o.value)&&'tag-on'"><input type="checkbox" class="hidden" :value="o.value" x-model="a.categories"><span x-text="o.label"></span></label>
+                </template></div></div>
+              <div class="grid grid-cols-3 gap-2">
+                <div><span class="lbl">可识别程度</span><select class="inp" x-model="a.identifiability"><template x-for="o in opts('IdentifiabilityLevel')" :key="o.value"><option :value="o.value" x-text="o.label"></option></template></select></div>
+                <div><span class="lbl">分类分级 (GB/T 43697)</span><select class="inp" x-model="a.data_classification"><template x-for="o in opts('DataClassification')" :key="o.value"><option :value="o.value" x-text="o.label"></option></template></select></div>
+                <div><span class="lbl">金融分级 JR/T 0197</span><select class="inp" x-model="a.financial_data_level"><option value="">不适用</option><template x-for="o in opts('FinancialDataLevel')" :key="o.value"><option :value="o.value" x-text="o.label"></option></template></select></div>
+              </div>
+            </div>
+          </template>
+          <button class="btn btn-add" @click="addAsset()">添加数据资产</button>
+        </div>
+
+        <!-- Tab 3: Nodes -->
+        <div x-show="leftTab==='nodes'" class="space-y-5">
+          <div class="space-y-2.5">
+            <div class="flex items-baseline justify-between border-b border-zinc-200 pb-1">
+              <span class="font-semibold text-[13px] text-zinc-900">外部实体</span>
+              <span class="text-[12px] text-zinc-500">用户、第三方供应商、监管机构</span>
+            </div>
+            <template x-for="(e, idx) in spec.entities" :key="idx">
+              <div class="item">
+                <div class="flex gap-2 items-end">
+                  <div class="flex-1"><span class="lbl">名称</span><input class="inp" x-model="e.name"></div>
+                  <div class="w-36"><span class="lbl">ID</span><input class="inp mono text-[12px]" x-model="e.id"></div>
+                  <button class="text-zinc-400 hover:text-red-700 text-[12px] px-1.5 py-1.5" @click="remove(spec.entities, idx)">删除</button>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div><span class="lbl">角色</span><select class="inp" x-model="e.role"><template x-for="o in opts('EntityRole')" :key="o.value"><option :value="o.value" x-text="o.label"></option></template></select></div>
+                  <div><span class="lbl">所在地区（空=默认）</span><input class="inp mono" x-model="e.region" placeholder="如 SG / US"></div>
+                  <div><span class="lbl">信任边界</span><input class="inp" x-model="e.trust_boundary"></div>
+                </div>
+                <div class="flex flex-wrap gap-4 pt-0.5">
+                  <label class="tog"><input type="checkbox" x-model="e.notice_provided">已提供隐私告知</label>
+                  <label class="tog"><input type="checkbox" x-model="e.opt_out_available">支持撤回同意/拒绝画像</label>
+                  <label class="tog"><input type="checkbox" x-model="e.dpa_signed">已签署 DPA/委托协议</label>
+                </div>
+              </div>
+            </template>
+            <button class="btn btn-add" @click="addEntity()">添加外部实体</button>
+          </div>
+
+          <div class="space-y-2.5">
+            <div class="flex items-baseline justify-between border-b border-zinc-200 pb-1">
+              <span class="font-semibold text-[13px] text-zinc-900">处理节点</span>
+              <span class="text-[12px] text-zinc-500">业务服务、接口、模型推理、批处理任务</span>
+            </div>
+            <template x-for="(p, idx) in spec.processes" :key="idx">
+              <div class="item">
+                <div class="flex gap-2 items-end">
+                  <div class="flex-1"><span class="lbl">名称</span><input class="inp" x-model="p.name"></div>
+                  <div class="w-36"><span class="lbl">ID</span><input class="inp mono text-[12px]" x-model="p.id"></div>
+                  <button class="text-zinc-400 hover:text-red-700 text-[12px] px-1.5 py-1.5" @click="remove(spec.processes, idx)">删除</button>
+                </div>
+                <div><span class="lbl">处理操作</span>
+                  <div class="flex flex-wrap gap-1.5"><template x-for="o in opts('ProcessingOperation')" :key="o.value">
+                    <label class="tag" :class="p.operations.includes(o.value)&&'tag-on'"><input type="checkbox" class="hidden" :value="o.value" x-model="p.operations"><span x-text="o.label"></span></label>
+                  </template></div></div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div><span class="lbl">合法性基础</span><select class="inp" x-model="p.lawful_basis"><template x-for="o in opts('LawfulBasis')" :key="o.value"><option :value="o.value" x-text="o.label"></option></template></select></div>
+                  <div><span class="lbl">部署地区（空=默认）</span><input class="inp mono" x-model="p.region"></div>
+                  <div><span class="lbl">信任边界</span><input class="inp" x-model="p.trust_boundary"></div>
+                </div>
+                <div><span class="lbl">处理目的（每行一条）</span>
+                  <textarea class="inp" rows="2" :value="p.purposes.join('\n')" @change="setLines(p, 'purposes', $event.target.value)"></textarea></div>
+                <div class="flex flex-wrap gap-4 pt-0.5">
+                  <label class="tog"><input type="checkbox" x-model="p.innovative_technology">应用创新技术</label>
+                  <label class="tog"><input type="checkbox" x-model="p.prevents_rights_or_service">结果可拒绝服务/限制权益</label>
+                  <label class="tog"><input type="checkbox" x-model="p.human_review_available">具备人工复核通道</label>
+                </div>
+              </div>
+            </template>
+            <button class="btn btn-add" @click="addProcess()">添加处理节点</button>
+          </div>
+
+          <div class="space-y-2.5">
+            <div class="flex items-baseline justify-between border-b border-zinc-200 pb-1">
+              <span class="font-semibold text-[13px] text-zinc-900">数据存储</span>
+              <span class="text-[12px] text-zinc-500">数据库、对象存储、数仓、日志系统</span>
+            </div>
+            <template x-for="(st, idx) in spec.stores" :key="idx">
+              <div class="item">
+                <div class="flex gap-2 items-end">
+                  <div class="flex-1"><span class="lbl">名称</span><input class="inp" x-model="st.name"></div>
+                  <div class="w-36"><span class="lbl">ID</span><input class="inp mono text-[12px]" x-model="st.id"></div>
+                  <button class="text-zinc-400 hover:text-red-700 text-[12px] px-1.5 py-1.5" @click="remove(spec.stores, idx)">删除</button>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div><span class="lbl">存储技术</span><input class="inp" x-model="st.technology"></div>
+                  <div><span class="lbl">存储地区（空=默认）</span><input class="inp mono" x-model="st.region"></div>
+                  <div><span class="lbl">信任边界</span><input class="inp" x-model="st.trust_boundary"></div>
+                  <div><span class="lbl">留存天数（空=无限期）</span><input type="number" min="0" class="inp" x-model.number="st.retention_days"></div>
+                  <div class="col-span-2"><span class="lbl">访问控制模型（空=未配置）</span><input class="inp" x-model="st.access_control" placeholder="RBAC / ABAC / JIT"></div>
+                </div>
+                <div><span class="lbl">存储的数据资产</span>
+                  <div class="flex flex-wrap gap-1.5"><template x-for="a in spec.data_assets" :key="a.id">
+                    <label class="tag" :class="st.data.includes(a.id)&&'tag-on'"><input type="checkbox" class="hidden" :value="a.id" x-model="st.data"><span x-text="a.name"></span></label>
+                  </template></div></div>
+                <div class="flex flex-wrap gap-4 pt-0.5">
+                  <label class="tog"><input type="checkbox" x-model="st.encrypted_at_rest">已开启静态加密</label>
+                  <label class="tog"><input type="checkbox" x-model="st.audit_logging">已开启访问审计日志</label>
+                </div>
+              </div>
+            </template>
+            <button class="btn btn-add" @click="addStore()">添加数据存储</button>
+          </div>
+        </div>
+
+        <!-- Tab 4: Flows -->
+        <div x-show="leftTab==='flows'" class="space-y-3">
+          <p class="text-[12px] text-zinc-500">定义节点间的数据传输路径。系统将根据源节点与目标节点所在地区自动识别跨境数据流。</p>
+          <template x-for="(f, idx) in spec.flows" :key="idx">
+            <div class="item">
+              <div class="flex gap-2 items-end">
+                <div class="flex-1"><span class="lbl">数据流名称</span><input class="inp" x-model="f.name"></div>
+                <div class="w-36"><span class="lbl">ID</span><input class="inp mono text-[12px]" x-model="f.id"></div>
+                <button class="text-zinc-400 hover:text-red-700 text-[12px] px-1.5 py-1.5" @click="remove(spec.flows, idx)">删除</button>
+              </div>
+              <div class="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
+                <div><span class="lbl">来源节点</span><select class="inp" x-model="f.source"><template x-for="n in nodeOptions" :key="n.id"><option :value="n.id" x-text="n.label" :selected="n.id===f.source"></option></template></select></div>
+                <div class="pb-1.5 text-zinc-400 text-[12px]">至</div>
+                <div><span class="lbl">目标节点</span><select class="inp" x-model="f.target"><template x-for="n in nodeOptions" :key="n.id"><option :value="n.id" x-text="n.label" :selected="n.id===f.target"></option></template></select></div>
+              </div>
+              <div><span class="lbl">传输的数据资产</span>
+                <div class="flex flex-wrap gap-1.5"><template x-for="a in spec.data_assets" :key="a.id">
+                  <label class="tag" :class="f.data.includes(a.id)&&'tag-on'"><input type="checkbox" class="hidden" :value="a.id" x-model="f.data"><span x-text="a.name"></span></label>
+                </template></div></div>
+              <div class="grid grid-cols-2 gap-2">
+                <div><span class="lbl">传输协议</span><input class="inp" x-model="f.protocol"></div>
+                <div><span class="lbl">跨境合规机制</span><select class="inp" x-model="f.transfer_mechanism"><template x-for="o in opts('TransferMechanism')" :key="o.value"><option :value="o.value" x-text="o.label"></option></template></select></div>
+              </div>
+              <label class="tog"><input type="checkbox" x-model="f.encrypted_in_transit">已启用传输层加密（TLS / mTLS）</label>
+            </div>
+          </template>
+          <button class="btn btn-add" @click="addFlow()">添加数据流</button>
+        </div>
+
+        <!-- Tab 5: Controls & Waivers -->
+        <div x-show="leftTab==='controls'" class="space-y-5">
+          <div class="rounded border border-zinc-200 bg-zinc-50 px-3 py-2 text-[12px] text-zinc-600">
+            <strong>成熟度折减规则：</strong>「计划中」不降低残余风险分值；「已落地」降低 1 档；「已验证」（须附审计证据）按控制库上限折减。切换状态可在右侧实时查看门禁变化。
+          </div>
+
+          <div class="space-y-2.5">
+            <div class="font-semibold text-[13px] text-zinc-900 border-b border-zinc-200 pb-1">缓解控制措施（对标 PC-xxx 控制库）</div>
+            <template x-for="(m, idx) in spec.mitigations" :key="idx">
+              <div class="item">
+                <div class="flex gap-2 items-end">
+                  <div class="flex-1"><span class="lbl">标准控制编号</span>
+                    <select class="inp" x-model="m.control_id" @change="onControlChange(m)">
+                      <option value="">不指定（按 PET 类型自动匹配）</option>
+                      <template x-for="c in meta.controls" :key="c.id"><option :value="c.id" x-text="`${c.id} ${c.name_zh}`" :selected="c.id===m.control_id"></option></template>
+                    </select></div>
+                  <div class="w-36"><span class="lbl">ID</span><input class="inp mono text-[12px]" x-model="m.id"></div>
+                  <button class="text-zinc-400 hover:text-red-700 text-[12px] px-1.5 py-1.5" @click="remove(spec.mitigations, idx)">删除</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div><span class="lbl">PET / 控制类型</span><select class="inp" x-model="m.pet_type"><template x-for="o in opts('PETType')" :key="o.value"><option :value="o.value" x-text="o.label" :selected="o.value===m.pet_type"></option></template></select></div>
+                  <div><span class="lbl">成熟度状态</span>
+                    <div class="flex rounded overflow-hidden border border-zinc-300 text-[12px]">
+                      <template x-for="o in opts('MitigationStatus')" :key="o.value">
+                        <button type="button" class="flex-1 py-1.5 transition-colors"
+                          :class="m.status===o.value ? (o.value==='verified'?'bg-emerald-700 text-white':o.value==='implemented'?'bg-slate-700 text-white':'bg-zinc-500 text-white') : 'bg-white text-zinc-600 hover:bg-zinc-50'"
+                          @click="m.status=o.value" x-text="o.label.split('（')[0]"></button>
+                      </template>
+                    </div></div>
+                </div>
+                <div><span class="lbl">实现说明</span><input class="inp" x-model="m.description"></div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div><span class="lbl">验证证据链接（已验证必填）</span><input class="inp" x-model="m.evidence" :class="m.status==='verified'&&!m.evidence&&'border-red-500'"></div>
+                  <div><span class="lbl">责任团队 / 责任人</span><input class="inp" x-model="m.owner"></div>
+                </div>
+                <div><span class="lbl">作用范围</span>
+                  <div class="flex flex-wrap gap-1.5"><template x-for="el in elementOptions" :key="el.id">
+                    <label class="tag" :class="m.applies_to.includes(el.id)&&'tag-on'"><input type="checkbox" class="hidden" :value="el.id" x-model="m.applies_to"><span x-text="el.label"></span></label>
+                  </template></div></div>
+                <div x-show="controlById(m.control_id)" class="text-[12px] text-zinc-600 bg-white rounded border border-zinc-200 p-2 space-y-0.5">
+                  <div><span class="font-medium text-zinc-800">验收证据要求：</span><span x-text="controlById(m.control_id)?.audit_evidence"></span></div>
+                  <div><span class="font-medium text-zinc-800">对标法规：</span><span x-text="controlById(m.control_id)?.regulations.join('；')"></span></div>
+                </div>
+              </div>
+            </template>
+            <button class="btn btn-add" @click="addMitigation()">添加控制措施</button>
+          </div>
+
+          <div class="space-y-2.5">
+            <div class="flex items-baseline justify-between border-b border-zinc-200 pb-1">
+              <span class="font-semibold text-[13px] text-zinc-900">限时风险豁免单（Risk Waiver）</span>
+              <span class="text-[12px] text-zinc-500">高风险 ≤ 90 天，极高 ≤ 30 天，红线不可豁免</span>
+            </div>
+            <div class="flex items-center gap-2 text-[12px]"><span class="text-zinc-600">评估基准日期：</span><input type="date" class="inp w-40" x-model="asOf"></div>
+            <template x-for="(w, idx) in spec.metadata.risk_waivers" :key="idx">
+              <div class="item">
+                <div class="flex gap-2 items-end">
+                  <div class="flex-1"><span class="lbl">豁免单号</span><input class="inp mono text-[12px]" x-model="w.waiver_id"></div>
+                  <div class="w-36"><span class="lbl">风险等级</span><select class="inp" x-model="w.risk_level"><option value="high">高风险（≤ 90 天）</option><option value="critical">极高风险（≤ 30 天）</option></select></div>
+                  <button class="text-zinc-400 hover:text-red-700 text-[12px] px-1.5 py-1.5" @click="remove(spec.metadata.risk_waivers, idx)">删除</button>
+                </div>
+                <div><span class="lbl">覆盖的风险发现项</span>
+                  <div class="flex flex-wrap gap-1.5"><template x-for="fid in [...new Set([...findingOptions, ...w.target_findings])]" :key="fid">
+                    <label class="tag mono" :class="w.target_findings.includes(fid)&&'tag-on'"><input type="checkbox" class="hidden" :value="fid" x-model="w.target_findings"><span x-text="fid"></span></label>
+                  </template></div></div>
+                <div><span class="lbl">商业必要性论证</span><textarea class="inp" rows="2" x-model="w.business_justification"></textarea></div>
+                <div><span class="lbl">临时补偿性控制（每行一条）</span><textarea class="inp" rows="2" :value="w.compensating_controls.join('\n')" @change="setLines(w, 'compensating_controls', $event.target.value)"></textarea></div>
+                <div class="grid grid-cols-3 gap-2">
+                  <div><span class="lbl">整改工单</span><input class="inp" x-model="w.remediation_ticket"></div>
+                  <div><span class="lbl">责任人</span><input class="inp" x-model="w.owner"></div>
+                  <div><span class="lbl">审批人</span><input class="inp" x-model="w.approved_by"></div>
+                  <div><span class="lbl">审批日期</span><input type="date" class="inp" x-model="w.approved_at"></div>
+                  <div><span class="lbl">硬性到期日</span><input type="date" class="inp" x-model="w.expires_at"></div>
+                </div>
+              </div>
+            </template>
+            <button class="btn btn-add" @click="addWaiver()">新建风险豁免单</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RIGHT: Assessment Dashboard ============ -->
+    <section class="xl:col-span-7 space-y-4">
+
+      <!-- Validation errors -->
+      <div x-show="errors.length" class="panel border-red-300 bg-red-50/70 p-3">
+        <div class="font-semibold text-red-800 text-[13px] mb-1">架构声明未通过校验（<span x-text="errors.length"></span> 项）<span x-show="stale" class="font-normal text-[12px] text-red-700 ml-1">下方暂显示上一次有效评估结果</span></div>
+        <ul class="text-[12px] text-red-800 list-disc pl-5 space-y-0.5"><template x-for="e in errors"><li class="mono" x-text="e"></li></template></ul>
+      </div>
+
+      <!-- Summary row -->
+      <template x-if="result">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3" :class="stale&&'opacity-60'">
+          <div class="panel border-l-4 p-4" :class="gateStyle(result.report.gate.status).border">
+            <div class="flex items-center justify-between text-[12px] text-zinc-500">
+              <span>门禁结论</span>
+              <span class="mono text-[11px]">Exit <span x-text="result.report.gate.exit_code"></span></span>
+            </div>
+            <div class="flex items-center gap-2 mt-1.5">
+              <span class="h-2.5 w-2.5 rounded-full shrink-0" :class="gateStyle(result.report.gate.status).dot"></span>
+              <span class="text-[17px] font-semibold tracking-tight" :class="gateStyle(result.report.gate.status).titleColor" x-text="gateStyle(result.report.gate.status).text"></span>
+            </div>
+            <div class="text-[12px] text-zinc-500 mt-1.5" x-text="gateStyle(result.report.gate.status).sub"></div>
+            <div x-show="loading" class="text-[11px] text-zinc-400 mt-1">正在重算...</div>
+          </div>
+
+          <div class="panel p-4">
+            <div class="text-[12px] text-zinc-500">最高风险（固有 / 残余）</div>
+            <div class="flex items-center gap-2 mt-2">
+              <span class="badge text-[13px] px-2 py-0.5" :class="levelClass(result.report.risk_summary.overall_inherent_level)" x-text="`${label('RiskLevel', result.report.risk_summary.overall_inherent_level)} ${result.report.risk_summary.max_inherent_score}`"></span>
+              <span class="text-zinc-400 text-[12px]">/</span>
+              <span class="badge text-[13px] px-2 py-0.5" :class="levelClass(result.report.risk_summary.overall_residual_level)" x-text="`${label('RiskLevel', result.report.risk_summary.overall_residual_level)} ${result.report.risk_summary.max_residual_score}`"></span>
+            </div>
+            <div class="text-[12px] text-zinc-500 mt-2.5">威胁总数 <strong class="text-zinc-900" x-text="result.report.risk_summary.total_findings"></strong> 项（极高 <span x-text="result.report.risk_summary.residual_counts.critical"></span> / 高 <span x-text="result.report.risk_summary.residual_counts.high"></span> / 中 <span x-text="result.report.risk_summary.residual_counts.medium"></span> / 低 <span x-text="result.report.risk_summary.residual_counts.low"></span>）</div>
+          </div>
+
+          <div class="panel p-4">
+            <div class="text-[12px] text-zinc-500 mb-2">强制评估触发</div>
+            <div class="space-y-1.5 text-[13px]">
+              <div class="flex justify-between items-center">
+                <span class="text-zinc-700">DPIA / PIPL PIA</span>
+                <span class="badge" :class="result.report.threshold.dpia_required?'bg-slate-800 text-white':'bg-zinc-100 text-zinc-500'" x-text="result.report.threshold.dpia_required?'强制触发':'未触发'"></span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-zinc-700">EU AI Act FRIA</span>
+                <span class="badge" :class="result.report.threshold.fria_required?'bg-slate-800 text-white':'bg-zinc-100 text-zinc-500'" x-text="result.report.threshold.fria_required?'强制触发':'未触发'"></span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-zinc-700">重要数据 / CIIO</span>
+                <span class="badge" :class="result.report.threshold.important_data_assessment_required?'bg-slate-800 text-white':'bg-zinc-100 text-zinc-500'" x-text="result.report.threshold.important_data_assessment_required?'强制触发':'未触发'"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Detail tabs -->
+      <div class="panel" :class="stale&&'opacity-60'">
+        <div class="px-4 pt-1 border-b border-zinc-200">
+          <nav class="flex overflow-x-auto -mb-px gap-1">
+            <button class="tab" :class="rightTab==='overview'&&'tab-on'" @click="rightTab='overview'">门禁与红线</button>
+            <button class="tab" :class="rightTab==='dfd'&&'tab-on'" @click="rightTab='dfd'; $nextTick(()=>renderDfd())">数据流图 DFD</button>
+            <button class="tab" :class="rightTab==='threshold'&&'tab-on'" @click="rightTab='threshold'">法域判定</button>
+            <button class="tab" :class="rightTab==='findings'&&'tab-on'" @click="rightTab='findings'">LINDDUN 风险</button>
+            <button class="tab" :class="rightTab==='ropa'&&'tab-on'" @click="rightTab='ropa'">RoPA 台账</button>
+            <button class="tab" :class="rightTab==='report'&&'tab-on'" @click="rightTab='report'">审计报告</button>
+          </nav>
+        </div>
+
+        <div class="p-4" x-show="!result"><div class="text-[13px] text-zinc-500">正在加载评估结果...</div></div>
+
+        <template x-if="result">
+          <div class="p-4">
+
+            <!-- Overview -->
+            <div x-show="rightTab==='overview'" class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div class="space-y-2.5">
+                <div class="font-semibold text-[13px] text-zinc-900">法定红线校验（零容忍，不可豁免）</div>
+                <template x-for="rl in meta.red_lines" :key="rl.id">
+                  <div class="flex items-start gap-2.5 rounded border p-2.5"
+                       :class="result.report.gate.red_line_violations.some(v=>v.red_line_id===rl.id) ? 'border-red-300 bg-red-50/70' : 'border-zinc-200 bg-white'">
+                    <span class="mt-1.5 h-2 w-2 rounded-full shrink-0"
+                          :class="result.report.gate.red_line_violations.some(v=>v.red_line_id===rl.id) ? 'bg-red-700' : 'bg-emerald-600'"></span>
+                    <div class="text-[12px] min-w-0">
+                      <div class="font-medium text-zinc-900"><span class="mono" x-text="rl.id"></span> <span class="text-zinc-400 mx-1">|</span> <span x-text="rl.title"></span></div>
+                      <div class="text-zinc-500 mt-0.5" x-text="rl.legal_references.join('；')"></div>
+                      <template x-for="v in result.report.gate.red_line_violations.filter(v=>v.red_line_id===rl.id)">
+                        <div class="text-red-800 mt-1" x-text="v.reason"></div>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <div class="space-y-4">
+                <div>
+                  <div class="font-semibold text-[13px] text-zinc-900 mb-2">门禁决策依据</div>
+                  <ul class="text-[12px] space-y-1.5"><template x-for="r in result.report.gate.reasons"><li class="rounded bg-zinc-50 border border-zinc-200 px-2.5 py-2 text-zinc-700" x-text="r"></li></template></ul>
+                </div>
+
+                <div x-show="result.report.threshold.jurisdiction_conflicts.length">
+                  <div class="font-semibold text-[13px] text-zinc-900 mb-2">跨法域合规冲突</div>
+                  <ul class="text-[12px] space-y-1.5"><template x-for="c in result.report.threshold.jurisdiction_conflicts"><li class="rounded bg-amber-50 border border-amber-200 px-2.5 py-2 text-amber-900" x-text="c"></li></template></ul>
+                </div>
+
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="font-semibold text-[13px] text-zinc-900">4x4 风险矩阵（可能性 L x 严重度 S）</div>
+                    <div class="flex text-[12px] rounded border border-zinc-300 overflow-hidden">
+                      <button class="px-2.5 py-0.5" :class="matrixMode==='inherent'?'bg-slate-800 text-white':'bg-white text-zinc-600'" @click="matrixMode='inherent'">固有</button>
+                      <button class="px-2.5 py-0.5" :class="matrixMode==='residual'?'bg-slate-800 text-white':'bg-white text-zinc-600'" @click="matrixMode='residual'">残余</button>
+                    </div>
+                  </div>
+                  <div class="flex gap-2">
+                    <div class="flex flex-col justify-center text-[11px] text-zinc-500 [writing-mode:vertical-rl] rotate-180 text-center">严重度 S</div>
+                    <div class="flex-1">
+                      <div class="grid grid-cols-4 gap-1.5">
+                        <template x-for="cell in matrixCells" :key="cell.key">
+                          <div class="h-12 rounded grid place-items-center text-[14px] font-semibold relative" :class="cellClass(cell.l, cell.s)">
+                            <span x-text="matrixCount(cell.l, cell.s) || ''"></span>
+                            <span class="absolute bottom-0.5 right-1.5 text-[10px] font-normal opacity-60 mono" x-text="cell.l * cell.s"></span>
+                          </div>
+                        </template>
+                      </div>
+                      <div class="text-[11px] text-zinc-500 text-center mt-1.5">可能性 L（单元格居中数字为命中威胁数，右下角为分值）</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div x-show="result.report.gate.waiver_evaluations.length">
+                  <div class="font-semibold text-[13px] text-zinc-900 mb-2">豁免单核验状态</div>
+                  <template x-for="w in result.report.gate.waiver_evaluations">
+                    <div class="text-[12px] rounded border px-2.5 py-2 mb-1.5" :class="w.status==='active'?'bg-emerald-50 border-emerald-200 text-emerald-900':'bg-red-50 border-red-200 text-red-900'">
+                      <span class="mono font-medium" x-text="w.waiver_id"></span>
+                      <span class="mx-1.5">|</span>
+                      <span x-text="w.status==='active'?'生效中':'已过期'"></span>
+                      <span class="mx-1.5">|</span>
+                      <span>到期日 <span class="mono" x-text="w.expires_at"></span></span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <!-- DFD -->
+            <div x-show="rightTab==='dfd'">
+              <div class="text-[12px] text-zinc-500 mb-2">按信任边界自动分组；虚线表示未加密传输；标注 CROSS-BORDER 表示跨境数据流。</div>
+              <div id="dfd-canvas" class="overflow-auto rounded border border-zinc-200 bg-zinc-50 p-4 min-h-[340px]"></div>
+              <div x-show="result.topology_warnings.length" class="mt-2.5 space-y-1 text-[12px] text-amber-800">
+                <template x-for="w in result.topology_warnings"><div class="rounded bg-amber-50 border border-amber-200 px-2.5 py-1.5" x-text="'建模提示：' + w"></div></template>
+              </div>
+            </div>
+
+            <!-- Threshold -->
+            <div x-show="rightTab==='threshold'" class="space-y-3">
+              <template x-for="res in juriResults" :key="res.jurisdiction">
+                <div class="rounded border border-zinc-200 overflow-hidden">
+                  <div class="flex items-center justify-between px-3 py-2 bg-zinc-50 border-b border-zinc-200">
+                    <span class="font-semibold text-[13px] text-zinc-900" x-text="label('Jurisdiction', res.jurisdiction)"></span>
+                    <span class="badge" :class="res.dpia_required?'bg-slate-800 text-white':'bg-zinc-200 text-zinc-600'" x-text="res.dpia_required?'强制触发评估':'未达触发阈值'"></span>
+                  </div>
+                  <div class="px-3 py-2 text-[12px] text-zinc-600 border-b border-zinc-100" x-text="res.summary"></div>
+                  <table class="w-full" x-show="res.triggered_criteria.length">
+                    <thead><tr><th class="th">规则 ID</th><th class="th">标准</th><th class="th">判定依据</th><th class="th">法律条款</th></tr></thead>
+                    <tbody><template x-for="c in res.triggered_criteria" :key="c.rule_id"><tr>
+                      <td class="td mono whitespace-nowrap text-[12px]" x-text="c.rule_id"></td>
+                      <td class="td" x-text="c.title"></td>
+                      <td class="td" x-text="c.reason"></td>
+                      <td class="td text-zinc-500 text-[12px]" x-text="c.legal_reference"></td>
+                    </tr></template></tbody>
+                  </table>
+                </div>
+              </template>
+            </div>
+
+            <!-- Findings -->
+            <div x-show="rightTab==='findings'" class="overflow-x-auto">
+              <div x-show="!result.report.findings.length" class="text-[13px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded p-3">当前架构未检出需额外处置的 LINDDUN 隐私威胁。</div>
+              <table class="w-full" x-show="result.report.findings.length">
+                <thead><tr><th class="th">发现 ID</th><th class="th">节点与说明</th><th class="th">威胁类别</th><th class="th">固有</th><th class="th">残余</th><th class="th">已生效 / 计划控制</th><th class="th">推荐 PETs</th></tr></thead>
+                <tbody><template x-for="f in result.report.findings" :key="f.finding_id"><tr class="hover:bg-zinc-50">
+                  <td class="td mono whitespace-nowrap text-[12px]" x-text="f.finding_id"></td>
+                  <td class="td"><div class="font-medium text-zinc-900" x-text="f.element_name"></div><div class="text-zinc-600 text-[12px]" x-text="f.title"></div><div class="text-zinc-500 text-[12px]" x-text="f.description"></div></td>
+                  <td class="td whitespace-nowrap text-[12px]" x-text="label('LINDDUNCategory', f.category)"></td>
+                  <td class="td whitespace-nowrap"><span class="badge mono" :class="levelClass(f.inherent_risk.level)" x-text="`${f.inherent_risk.likelihood}x${f.inherent_risk.severity}=${f.inherent_risk.score}`"></span></td>
+                  <td class="td whitespace-nowrap"><span class="badge mono" :class="levelClass(f.residual_risk.level)" x-text="`${f.residual_risk.likelihood}x${f.residual_risk.severity}=${f.residual_risk.score}`"></span></td>
+                  <td class="td text-[12px]"><div class="text-emerald-800 mono" x-text="f.applied_mitigations.join(', ') || '-'"></div><div class="text-zinc-400" x-show="f.planned_mitigations.length" x-text="'计划：' + f.planned_mitigations.join(', ')"></div></td>
+                  <td class="td text-zinc-500 text-[12px]" x-text="f.recommended_pets.map(p=>label('PETType', p)).join('、')"></td>
+                </tr></template></tbody>
+              </table>
+            </div>
+
+            <!-- RoPA -->
+            <div x-show="rightTab==='ropa'" class="overflow-x-auto">
+              <table class="w-full">
+                <thead><tr><th class="th">处理节点</th><th class="th">处理目的</th><th class="th">合法性基础</th><th class="th">数据类别</th><th class="th">接收方 / 跨境</th><th class="th">留存期限</th><th class="th">安全措施</th></tr></thead>
+                <tbody><template x-for="r in result.report.ropa" :key="r.process_id"><tr>
+                  <td class="td font-medium text-zinc-900" x-text="r.process_name"></td>
+                  <td class="td text-[12px]" x-text="r.purposes.join('；')"></td>
+                  <td class="td text-[12px]" x-text="label('LawfulBasis', r.lawful_basis)"></td>
+                  <td class="td text-[12px]" x-text="r.data_categories.map(c=>label('DataCategory', c)).join('、')"></td>
+                  <td class="td text-[12px]" x-text="[...r.recipients, ...r.cross_border_transfers].join('；') || '无'"></td>
+                  <td class="td text-[12px]" x-text="r.retention_policies.join('；') || '-'"></td>
+                  <td class="td text-[12px]" x-text="r.security_measures.join('；') || '-'"></td>
+                </tr></template></tbody>
+              </table>
+            </div>
+
+            <!-- Report -->
+            <div x-show="rightTab==='report'">
+              <div class="flex gap-2 mb-3">
+                <button class="btn btn-dark" @click="printReport()">打印 / 导出 PDF</button>
+                <button class="btn btn-outline" @click="exportMarkdown()">下载 Markdown</button>
+              </div>
+              <div class="prose-report rounded border border-zinc-200 bg-white p-5 max-h-[70vh] overflow-auto" x-html="rightTab==='report' ? reportHtml() : ''"></div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast -->
+  <div x-show="toast" x-transition class="fixed bottom-5 right-5 bg-zinc-900 text-white text-[13px] rounded px-3.5 py-2 shadow-md" x-text="toast"></div>
+</body>
+</html>

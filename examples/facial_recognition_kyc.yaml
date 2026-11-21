@@ -1,0 +1,184 @@
+# yaml-language-server: $schema=../schemas/dataflow.schema.json
+schema_version: "1.0"
+
+metadata:
+  system_id: cross-border-face-kyc
+  name: Cross-Border AI Facial Recognition KYC & Credit Scoring
+  description: >
+    Real-time biometric liveness verification and automated credit risk profiling
+    for fintech onboarding, calling an overseas cloud AI verification vendor.
+  controller: FinTech Cloud Holdings Ltd.
+  dpo_contact: dpo@fintech-example.com
+  jurisdictions:
+    - GDPR
+    - PIPL
+  home_region: CN
+  data_subjects:
+    - customers
+  estimated_subjects: 500000
+
+data_assets:
+  - id: face_embedding
+    name: Facial Biometric Template & Selfie Image
+    categories:
+      - biometric
+    identifiability: directly_identifiable
+    description: 512-dim facial feature vector and liveness video frames.
+
+  - id: gov_id_doc
+    name: National ID & Passport Scan
+    categories:
+      - basic_identity
+      - government_id
+    identifiability: directly_identifiable
+
+  - id: credit_profile
+    name: Automated Credit Risk Score
+    categories:
+      - financial_account
+      - online_behavior
+    identifiability: pseudonymized
+
+entities:
+  - id: mobile_user
+    name: Mobile App Customer
+    role: data_subject
+    region: CN
+    trust_boundary: public_internet
+    notice_provided: true
+    opt_out_available: false
+
+  - id: sg_ai_vendor
+    name: Overseas Biometric AI Vendor (Singapore)
+    role: processor
+    region: SG
+    trust_boundary: third_party_cloud
+    dpa_signed: true
+
+processes:
+  - id: kyc_gateway
+    name: KYC Onboarding API Gateway
+    operations:
+      - collection
+      - biometric_identification
+    purposes:
+      - Identity verification and anti-fraud compliance
+    lawful_basis: separate_consent
+    trust_boundary: vpc_dmz
+    innovative_technology: true
+
+  - id: risk_scoring_engine
+    name: Automated Credit Decision Engine
+    operations:
+      - profiling
+      - scoring
+      - automated_decision_making
+      - dataset_matching
+    purposes:
+      - Automated loan eligibility and credit limit determination
+    lawful_basis: contract
+    trust_boundary: vpc_core
+    innovative_technology: true
+    prevents_rights_or_service: true
+    human_review_available: false
+
+stores:
+  - id: biometric_vault
+    name: Biometric Feature Vault (Milvus + KMS)
+    technology: Milvus
+    trust_boundary: private_data_tier
+    data:
+      - face_embedding
+      - gov_id_doc
+    encrypted_at_rest: true
+    retention_days: 180
+    access_control: RBAC
+    audit_logging: true
+
+  - id: credit_profile_db
+    name: Credit Profile Database
+    technology: PostgreSQL
+    trust_boundary: private_data_tier
+    data:
+      - credit_profile
+    encrypted_at_rest: false
+    retention_days: null
+    access_control: RBAC
+    audit_logging: false
+
+flows:
+  - id: flow_user_to_kyc
+    name: Upload Selfie & ID Document
+    source: mobile_user
+    target: kyc_gateway
+    data:
+      - face_embedding
+      - gov_id_doc
+    protocol: HTTPS/TLS 1.3
+    encrypted_in_transit: true
+
+  - id: flow_kyc_to_sg_ai
+    name: Cross-Border Liveness Inference Call
+    source: kyc_gateway
+    target: sg_ai_vendor
+    data:
+      - face_embedding
+    protocol: HTTPS/TLS 1.3
+    encrypted_in_transit: true
+    transfer_mechanism: none
+
+  - id: flow_kyc_to_vault
+    name: Persist Verified Biometric & ID Records
+    source: kyc_gateway
+    target: biometric_vault
+    data:
+      - face_embedding
+      - gov_id_doc
+    protocol: gRPC/mTLS
+    encrypted_in_transit: true
+
+  - id: flow_kyc_to_risk
+    name: Trigger Automated Credit Scoring
+    source: kyc_gateway
+    target: risk_scoring_engine
+    data:
+      - gov_id_doc
+      - credit_profile
+    protocol: gRPC/mTLS
+    encrypted_in_transit: true
+
+  - id: flow_risk_to_db
+    name: Store Credit Risk Score
+    source: risk_scoring_engine
+    target: credit_profile_db
+    data:
+      - credit_profile
+    protocol: PostgreSQL/TLS
+    encrypted_in_transit: true
+
+mitigations:
+  - id: mit_kms_vault
+    pet_type: encryption_at_rest
+    description: AES-256 envelope encryption with hardware-backed KMS keys for biometric vectors.
+    applies_to:
+      - biometric_vault
+    status: verified
+    evidence: https://github.com/org/infra/pull/412
+    owner: security-platform
+
+  - id: mit_tls_global
+    pet_type: encryption_in_transit
+    description: Enforce TLS 1.3 / mTLS across external and internal service hops.
+    applies_to:
+      - "*"
+    status: implemented
+    evidence: infra/istio/peer-authentication.yaml
+    owner: platform-net
+
+  - id: mit_human_review_roadmap
+    pet_type: human_in_the_loop
+    description: Planned manual appeal workflow for rejected credit applicants.
+    applies_to:
+      - risk_scoring_engine
+    status: planned
+    owner: risk-product

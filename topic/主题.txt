@@ -1,0 +1,10 @@
+项目一：DPIA-as-Code —— 基于架构声明的自动化 DPIA/PIA 与 LINDDUN 隐私威胁建模引擎
+专业壁垒： 把 GDPR 第 35 条（DPIA）、中国 PIPL 第 55 条 / GB/T 39335 与国际最权威的隐私威胁建模方法论 LINDDUN 融进 CI/CD 流水线，真正做到“架构一改，影响评估自动重算”。
+ * 解决什么痛点： 研发在新增一个“用户画像”或“人脸识别”接口时，法务根本不知道。这个工具让研发在代码库里维护一份极简的 dataflow.yaml（声明数据源、处理动作、存储位置、第三方传输），引擎自动判断是否触发法定 DPIA/PIA 阈值，并自动跑完威胁建模与风险打分。
+ * 模块大纲：
+   * 数据流声明解析器（DFD Parser）： 解析 dataflow.yaml，自动生成 Mermaid 数据流向图（DFD） 和 GDPR Art. 30 处理活动记录（RoPA） 草案。
+   * 法定触发阈值引擎（Threshold Engine）： 内置规则树，自动判定是否命中强制评估条件（如：大规模处理敏感个人数据、自动化决策与画像、跨境传输、新技术应用）。
+   * LINDDUN 隐私威胁映射器： 针对数据流中的每个节点（采集、存储、传输），自动匹配 LINDDUN 七大隐私威胁（可链接性 Linkability、可识别性 Identifiability、不可否认性 Non-repudiation 等）并推荐对应缓解控制措施（PETs，如差分隐私、假名化）。
+   * 定量风险打分与报告器（Risk Scorer）： 参照法国数据保护局（CNIL PIA）和国标 GB/T 39335 的“发生可能性 × 影响严重度”矩阵计算残余风险，一键导出可审计的 Markdown/PDF 版 DPIA/PIA 报告。
+   * CI/CD 阻断门禁： 接入 GitHub Actions，如果 PR 中引入了高风险数据处理且未在 YAML 中声明对应的缓解措施（Mitigation），直接亮红灯拦截合并。
+ * 重点练到的 GitHub 技能： JSON Schema 校验、GitHub Actions 自动评论 PR（把 DPIA 风险摘要直接贴在 PR 评论区）、自动化构建发布。我设计了这样一个项目，你看看怎么样

@@ -1,0 +1,88 @@
+# Policy-as-Code: Statutory Zero-Tolerance Red Lines (RL-01 .. RL-05)
+# 1:1 machine-readable mirror of governance/01_governance_policy.md §3.1
+# Any red-line hit forces Hard Block and CANNOT be waived via RiskWaiver.
+
+schema_version: "1.0"
+policy_ref: "POL-PRIV-001"
+waivable: false
+
+red_lines:
+  - id: RL-01
+    rule_id: AIA-ART05-PROH
+    title: "EU AI Act Prohibited AI Practices"
+    jurisdictions: [EU_AI_ACT]
+    legal_references:
+      - "EU AI Act (EU 2024/1689) Art. 5"
+    condition_key: "ai_prohibited_practice"
+    observed_fields:
+      - "metadata.ai_system.prohibited_practices"
+      - "metadata.ai_system.risk_tier"
+    action: hard_block
+    remediation_guidance: "Remove prohibited AI practice (e.g., social scoring, untargeted facial scraping, workplace/education emotion recognition, subliminal manipulation) before proceeding."
+
+  - id: RL-02
+    rule_id: UNLAWFUL-PROCESSING-BASE
+    title: "Missing Lawful Basis or Sensitive / Minor-Under-14 Prerequisites"
+    jurisdictions: [GDPR, PIPL]
+    legal_references:
+      - "GDPR Art. 6 & Art. 9"
+      - "PIPL Art. 13, Art. 28-31"
+    condition_key: "missing_lawful_basis_or_sensitive_prerequisite"
+    observed_fields:
+      - "processes[].lawful_basis"
+      - "data_assets[].categories"
+    action: hard_block
+    remediation_guidance: "Declare a valid statutory lawful_basis (never 'unspecified'); for PIPL sensitive data or minors under 14, enforce separate_consent and parental verification."
+
+  - id: RL-03
+    rule_id: UNLAWFUL-CROSS-BORDER
+    title: "Unlawful Cross-Border Transfer of Important, CIIO, or Personal Data"
+    jurisdictions: [GDPR, PIPL, CN_DSL_NDSR]
+    legal_references:
+      - "CSL Art. 37"
+      - "DSL Art. 31"
+      - "PIPL Art. 38-40"
+      - "NDSR Art. 35-39"
+      - "GDPR Chapter V (Art. 44-49)"
+    condition_key: "unlawful_cross_border_transfer"
+    observed_fields:
+      - "metadata.is_ciio"
+      - "data_assets[].data_classification"
+      - "flows[].transfer_mechanism"
+    action: hard_block
+    remediation_guidance: "Configure a valid statutory cross-border transfer_mechanism (pipl_security_assessment mandatory for CIIO or important/core data; SCC/adequacy/BCR for GDPR)."
+
+  - id: RL-04
+    rule_id: UNPROTECTED-SENSITIVE-EXPOSURE
+    title: "Unprotected Exposure of Sensitive Personal Data or Important/Core Data"
+    jurisdictions: [GDPR, PIPL, CN_DSL_NDSR]
+    legal_references:
+      - "CSL Art. 21"
+      - "DSL Art. 27"
+      - "PIPL Art. 51"
+      - "GDPR Art. 32"
+    condition_key: "unprotected_high_sensitivity_data"
+    observed_fields:
+      - "flows[].encrypted_in_transit"
+      - "stores[].encrypted_at_rest"
+      - "stores[].access_control"
+      - "data_assets[].categories"
+      - "data_assets[].data_classification"
+    action: hard_block
+    remediation_guidance: "Enforce TLS/mTLS in transit, encryption at rest (AES-256/SM4), and explicit RBAC/ABAC access control for all sensitive personal data and important/core data."
+
+  - id: RL-05
+    rule_id: UNCHECKED-AUTOMATED-DECISION
+    title: "High-Impact Fully Automated Decision-Making Without Human Oversight"
+    jurisdictions: [GDPR, PIPL, EU_AI_ACT]
+    legal_references:
+      - "GDPR Art. 22"
+      - "PIPL Art. 24"
+      - "EU AI Act Art. 14"
+    condition_key: "high_impact_adm_without_human_oversight"
+    observed_fields:
+      - "processes[].operations"
+      - "processes[].prevents_rights_or_service"
+      - "processes[].human_review_available"
+    action: hard_block
+    remediation_guidance: "Implement meaningful human-in-the-loop review, appeal channel, and operator override/kill-switch (PC-AI-01) for automated decisions that deny rights or services."
