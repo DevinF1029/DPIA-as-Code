@@ -31,7 +31,7 @@ flowchart TB
 * **法定红线零容忍 + 限时风险豁免（Risk Waiver）**：命中 `RL-01`..`RL-05` 强制 `BLOCK` 且严禁豁免；非红线高风险可走带**硬性到期日**的 `RiskWaiver`（High ≤ 90 天 / Critical ≤ 30 天），到期后自动恢复阻断。
 * **防“纸面洗绿”的透明成熟度折减**：`planned` 控制折减系数为 `0`（不降分），仅 `implemented`（降 1 档）与附带审计证据的 `verified` 控制可实质降低残余风险；固有风险达到 `CRITICAL` 时强制要求 `dpo_signoff.approved: true`。
 * **通用数据安全 GRC 为本，预留金融行业扩展口子**：在模型中预留可选 `industry_sector`（`banking` / `insurance` 等）、`is_ciio`、`financial_data_level`（对标 JR/T 0197 `L1`–`L5`）与 `Jurisdiction.CN_FIN_NFRA`。
-* **面向非程序员的交互式 Web 工作台**：法务、DPO 与业务负责人可在浏览器中通过分步表单填报、切换控制成熟度做 What-if 模拟、实时查看 Mermaid DFD 与 4×4 风险矩阵，一键导出中文审计报告（Markdown / PDF）及标准 `dataflow.yaml` 交付研发进入 CI/CD。
+* **面向非程序员的交互式 Web 工作台与动态 DPIA 评估表**：法务、DPO 与业务负责人可在浏览器中通过分步表单填报、切换控制成熟度做 What-if 模拟、在**动态 DPIA 评估表**中在线补全实质审查/整改排期/三方签批（按需自动展开 FRIA 与重要数据章节），一键导出无占位符中文审计报告（Markdown / PDF）、整改台账（CSV）及标准 `dataflow.yaml`。
 
 ---
 
@@ -105,13 +105,13 @@ python -m dpia_as_code.schema_export
 
 ---
 
-## 四、 内置示例架构（`examples/`）
+## 四、 内置示例架构与产出报告对照（`examples/`）
 
-| 示例文件 | 业务场景说明 | 预期门禁结果 |
-| :--- | :--- | :---: |
-| [static_marketing_site.yaml](examples/static_marketing_site.yaml) | 欧盟境内低风险 B2B 官网联系表单 | `PASS` (Exit `0`) |
-| [facial_recognition_kyc.yaml](examples/facial_recognition_kyc.yaml) | 跨境人脸识别 KYC + 自动化信用评分（缺失跨境机制与人工复核） | `BLOCK` (Exit `1`，命中 `RL-03` / `RL-05`) |
-| [banking_retail_credit_ai.yaml](examples/banking_retail_credit_ai.yaml) | 商业银行零售智能信贷审批（CIIO + 重要数据 L4 + 高风险 AI + `verified` 控制与 DPO 签批） | `WARN` (Exit `0`，触发 PIPL / DSL / FRIA) |
+| 输入架构声明（YAML） | 业务场景说明 | 预期门禁结果 | 对应生成的中文审计报告 |
+| :--- | :--- | :---: | :--- |
+| [static_marketing_site.yaml](examples/static_marketing_site.yaml) | 欧盟境内低风险 B2B 官网联系表单 | `PASS` (Exit `0`) | [static_marketing_site_report.md](examples/sample_reports/static_marketing_site_report.md) |
+| [facial_recognition_kyc.yaml](examples/facial_recognition_kyc.yaml) | 跨境人脸识别 KYC + 自动化信用评分（缺失跨境机制与人工复核） | `BLOCK` (Exit `1`，命中 `RL-03` / `RL-05`) | [facial_recognition_kyc_report.md](examples/sample_reports/facial_recognition_kyc_report.md) |
+| [banking_retail_credit_ai.yaml](examples/banking_retail_credit_ai.yaml) | 商业银行零售智能信贷审批（CIIO + 重要数据 L4 + 高风险 AI + `verified` 控制与 DPO 签批） | `WARN` (Exit `0`，触发 PIPL / DSL / FRIA) | [banking_retail_credit_report.md](examples/sample_reports/banking_retail_credit_report.md) |
 
 ---
 
@@ -145,10 +145,11 @@ DPIA-as-Code/
 │   └── control_catalog.yaml                # 25 项 PC-xxx-xx 控制结构化目录
 ├── schemas/                                # 第 3 层：架构声明契约 Schema
 │   └── dataflow.schema.json                # 自动导出的 JSON Schema (Draft 2020-12)
-├── examples/                               # 多行业参考 dataflow.yaml 示例
+├── examples/                               # 多行业参考 dataflow.yaml 示例与产出报告样例
 │   ├── static_marketing_site.yaml          # 低风险官网表单示例（PASS）
 │   ├── facial_recognition_kyc.yaml         # 跨境人脸识别 KYC 示例（BLOCK）
-│   └── banking_retail_credit_ai.yaml       # 商业银行零售智能信贷示例（WARN）
+│   ├── banking_retail_credit_ai.yaml       # 商业银行零售智能信贷示例（WARN）
+│   └── sample_reports/                     # 与上述输入一一对应的中文审计报告样例 (*.md)
 ├── src/
 │   └── dpia_as_code/                       # 第 4 层：Python 核心引擎、CLI 与 Web 工作台
 │       ├── __init__.py

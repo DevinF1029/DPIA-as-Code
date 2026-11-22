@@ -432,11 +432,12 @@
         <div class="px-4 pt-1 border-b border-zinc-200">
           <nav class="flex overflow-x-auto -mb-px gap-1">
             <button class="tab" :class="rightTab==='overview'&&'tab-on'" @click="rightTab='overview'">门禁与红线</button>
+            <button class="tab" :class="rightTab==='sheet'&&'tab-on'" @click="rightTab='sheet'">DPIA 评估表</button>
             <button class="tab" :class="rightTab==='dfd'&&'tab-on'" @click="rightTab='dfd'; $nextTick(()=>renderDfd())">数据流图 DFD</button>
             <button class="tab" :class="rightTab==='threshold'&&'tab-on'" @click="rightTab='threshold'">法域判定</button>
             <button class="tab" :class="rightTab==='findings'&&'tab-on'" @click="rightTab='findings'">LINDDUN 风险</button>
             <button class="tab" :class="rightTab==='ropa'&&'tab-on'" @click="rightTab='ropa'">RoPA 台账</button>
-            <button class="tab" :class="rightTab==='report'&&'tab-on'" @click="rightTab='report'">审计报告</button>
+            <button class="tab" :class="rightTab==='report'&&'tab-on'" @click="rightTab='report'">最终报告</button>
           </nav>
         </div>
 
@@ -511,6 +512,147 @@
                       <span>到期日 <span class="mono" x-text="w.expires_at"></span></span>
                     </div>
                   </template>
+                </div>
+              </div>
+            </div>
+
+            <!-- Interactive Dynamic DPIA Sheet -->
+            <div x-show="rightTab==='sheet'" class="space-y-5">
+              <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-zinc-200">
+                <div>
+                  <div class="font-semibold text-[14px] text-zinc-900">动态 DPIA / PIA / FRIA 评估表</div>
+                  <div class="text-[12px] text-zinc-500">客观事实由引擎自动回填；实质裁量、整改排期与三方签批在此在线补全，实时同步至最终报告与 PDF。</div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <button class="btn btn-outline" @click="fillSampleReview()">填入示范审查内容</button>
+                  <button class="btn btn-outline" @click="exportRemediationCsv()">导出整改台账 (.csv)</button>
+                  <button class="btn btn-dark" @click="printReport()">打印 / 导出 PDF</button>
+                </div>
+              </div>
+
+              <!-- 1. Executive Metadata -->
+              <div class="space-y-2">
+                <div class="font-semibold text-[13px] text-zinc-900 border-l-2 border-slate-800 pl-2">1. 评估档案（自动汇总 + 业务补录）</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 rounded border border-zinc-200 bg-zinc-50/60 p-3">
+                  <div><span class="lbl">评估编号</span><input class="inp mono" x-model="review.assessment_id"></div>
+                  <div><span class="lbl">业务负责人（Business Owner）</span><input class="inp" x-model="review.business_owner" placeholder="填写业务归口部门与负责人姓名"></div>
+                  <div class="text-[12px] text-zinc-600"><span class="text-zinc-400">系统名称：</span><span class="font-medium text-zinc-900" x-text="spec.metadata.name"></span></div>
+                  <div class="text-[12px] text-zinc-600"><span class="text-zinc-400">行业 / CIIO：</span><span x-text="label('IndustrySector', spec.metadata.industry_sector)"></span> / <span x-text="spec.metadata.is_ciio ? '是 CIIO' : '非 CIIO'"></span></div>
+                  <div class="text-[12px] text-zinc-600"><span class="text-zinc-400">触发评估：</span>
+                    <span class="mono" x-text="[result.report.threshold.dpia_required ? 'DPIA/PIA' : '', result.report.threshold.fria_required ? 'FRIA' : '', result.report.threshold.important_data_assessment_required ? '重要数据评估' : ''].filter(Boolean).join(' + ') || '未触发强制评估'"></span>
+                  </div>
+                  <div class="text-[12px] text-zinc-600"><span class="text-zinc-400">门禁状态：</span><span class="font-semibold" :class="gateStyle(result.report.gate.status).titleColor" x-text="gateStyle(result.report.gate.status).text"></span></div>
+                </div>
+              </div>
+
+              <!-- 2. Auto-filled Asset Classification Summary -->
+              <div class="space-y-2">
+                <div class="font-semibold text-[13px] text-zinc-900 border-l-2 border-slate-800 pl-2">2. 涉评数据资产与分类分级清单（自动联动）</div>
+                <div class="overflow-x-auto rounded border border-zinc-200">
+                  <table class="w-full">
+                    <thead><tr><th class="th">资产 ID</th><th class="th">资产名称</th><th class="th">数据类别</th><th class="th">分类分级</th><th class="th">金融分级</th><th class="th">可识别度</th></tr></thead>
+                    <tbody>
+                      <template x-for="a in spec.data_assets" :key="a.id">
+                        <tr>
+                          <td class="td mono text-[12px]" x-text="a.id"></td>
+                          <td class="td font-medium" x-text="a.name"></td>
+                          <td class="td text-[12px]" x-text="a.categories.map(c=>label('DataCategory', c)).join('、')"></td>
+                          <td class="td text-[12px]" x-text="label('DataClassification', a.data_classification)"></td>
+                          <td class="td mono text-[12px]" x-text="a.financial_data_level || '-'"></td>
+                          <td class="td text-[12px]" x-text="label('IdentifiabilityLevel', a.identifiability)"></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 3. Human Substantive Review -->
+              <div class="space-y-3">
+                <div class="font-semibold text-[13px] text-zinc-900 border-l-2 border-slate-800 pl-2">3. 合法性、必要性与比例性实质审查（DPO / 业务填写）</div>
+                <div class="item">
+                  <div><span class="lbl">合法性基础适格性论证</span><textarea class="inp" rows="2" x-model="review.lawful_basis_rationale" placeholder="确认各处理节点合法性基础覆盖全部适用法域，且未在中国业务中误用 GDPR 合法利益..."></textarea></div>
+                  <div><span class="lbl">最小必要与比例性论证</span><textarea class="inp" rows="2" x-model="review.necessity_proportionality" placeholder="论证采集敏感/生物识别/金融数据的不可替代性，以及已评估过的低侵入性替代方案..."></textarea></div>
+                  <div><span class="lbl">数据主体权利保障机制与响应 SLA</span><textarea class="inp" rows="2" x-model="review.data_subject_rights_sla" placeholder="说明隐私告知、撤回同意、查询删除、关闭个性化与人工申诉的具体路径及响应时限（如 15 个工作日）..."></textarea></div>
+                </div>
+              </div>
+
+              <!-- 4. Conditional FRIA & Important Data Sections -->
+              <div class="space-y-3">
+                <div class="font-semibold text-[13px] text-zinc-900 border-l-2 border-slate-800 pl-2">4. 专项影响评估（按触发结果动态展开）</div>
+                <div x-show="!result.report.threshold.fria_required && !result.report.threshold.important_data_assessment_required" class="rounded border border-zinc-200 bg-zinc-50 px-3 py-2 text-[12px] text-zinc-500">
+                  当前架构未触发 EU AI Act FRIA 或中国重要数据/CIIO 专项评估，本节自动收起。
+                </div>
+
+                <div x-show="result.report.threshold.fria_required" class="item border-slate-300">
+                  <div class="font-semibold text-[12px] text-slate-900">4.1 EU AI Act 基本权利影响评估（FRIA — Art. 27 已自动激活）</div>
+                  <div><span class="lbl">受影响自然人群体与调用频次</span><textarea class="inp" rows="2" x-model="review.fria_affected_groups" placeholder="说明受影响群体范围、弱势群体排查结论与部署频次..."></textarea></div>
+                  <div><span class="lbl">平等权与非歧视偏差测试结论</span><textarea class="inp" rows="2" x-model="review.fria_fairness_bias" placeholder="填写训练数据代表性评估、不同群体误拒率/误判率偏差测试结果..."></textarea></div>
+                  <div><span class="lbl">人工监督与一键中止机制（Art. 14）</span><textarea class="inp" rows="2" x-model="review.fria_human_oversight" placeholder="填写操作员人工复核 SOP、覆写权限与 Kill-Switch 演练记录..."></textarea></div>
+                </div>
+
+                <div x-show="result.report.threshold.important_data_assessment_required" class="item border-slate-300">
+                  <div class="font-semibold text-[12px] text-slate-900">4.2 重要数据 / CIIO 安全评估（DSL Art. 30 / 网数条例 Art. 31 已自动激活）</div>
+                  <div><span class="lbl">国家安全、经济运行与公共利益影响分析</span><textarea class="inp" rows="2" x-model="review.important_data_impact" placeholder="分析重要/核心数据共享、委托处理或出境对国家安全与公共利益的潜在影响..."></textarea></div>
+                  <div><span class="lbl">年度主管部门报送 / 出境安全评估回执编号</span><input class="inp" x-model="review.important_data_filing_ref" placeholder="填写备案编号、批复文号或年度报送排期"></div>
+                </div>
+              </div>
+
+              <!-- 5. Dynamic Remediation Tracker -->
+              <div class="space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <div class="font-semibold text-[13px] text-zinc-900 border-l-2 border-slate-800 pl-2">5. 整改追踪与行动计划（根据中高残余风险自动生成）</div>
+                  <button class="btn btn-outline py-1 text-[12px]" @click="addRemediation()">新增整改项</button>
+                </div>
+                <div x-show="!review.remediations.length" class="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-800">
+                  当前无中/高/极高残余风险需要整改。
+                </div>
+                <div class="overflow-x-auto rounded border border-zinc-200" x-show="review.remediations.length">
+                  <table class="w-full">
+                    <thead><tr><th class="th w-20">编号</th><th class="th w-36">关联发现</th><th class="th w-28">控制编号</th><th class="th">具体整改动作</th><th class="th w-28">责任人</th><th class="th w-32">目标完成日</th><th class="th w-32">验证证据</th><th class="th w-28">状态</th><th class="th w-10"></th></tr></thead>
+                    <tbody>
+                      <template x-for="(rem, idx) in review.remediations" :key="idx">
+                        <tr>
+                          <td class="td mono text-[12px] whitespace-nowrap" x-text="rem.rem_id"></td>
+                          <td class="td mono text-[11px]"><input class="inp mono text-[11px]" x-model="rem.finding_id" placeholder="自定义"></td>
+                          <td class="td"><input class="inp mono text-[11px]" x-model="rem.control_id" placeholder="PC-xxx-xx"></td>
+                          <td class="td"><input class="inp text-[12px]" x-model="rem.action"></td>
+                          <td class="td"><input class="inp text-[12px]" x-model="rem.owner" placeholder="负责人"></td>
+                          <td class="td"><input type="date" class="inp text-[11px]" x-model="rem.due_date"></td>
+                          <td class="td"><input class="inp text-[11px]" x-model="rem.evidence" placeholder="PR/工单"></td>
+                          <td class="td">
+                            <select class="inp text-[12px]" x-model="rem.status">
+                              <option value="Open">Open</option>
+                              <option value="In Progress">In Progress</option>
+                              <option value="Closed">Closed</option>
+                            </select>
+                          </td>
+                          <td class="td text-center"><button class="text-zinc-400 hover:text-red-700 text-[12px]" @click="remove(review.remediations, idx)">删</button></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 6. Three-party Sign-off -->
+              <div class="space-y-2">
+                <div class="font-semibold text-[13px] text-zinc-900 border-l-2 border-slate-800 pl-2">6. 三方合规签批栏（Sign-Off）</div>
+                <div class="overflow-x-auto rounded border border-zinc-200">
+                  <table class="w-full">
+                    <thead><tr><th class="th w-40">角色</th><th class="th w-40">姓名 / 部门</th><th class="th w-44">审批结论</th><th class="th">意见与附带条件</th><th class="th w-36">签批日期</th></tr></thead>
+                    <tbody>
+                      <template x-for="(s, idx) in review.signoffs" :key="idx">
+                        <tr>
+                          <td class="td font-medium text-[12px] whitespace-nowrap" x-text="s.role"></td>
+                          <td class="td"><input class="inp text-[12px]" x-model="s.name" placeholder="姓名 / 部门"></td>
+                          <td class="td"><input class="inp text-[12px]" x-model="s.decision" placeholder="审批结论"></td>
+                          <td class="td"><input class="inp text-[12px]" x-model="s.comments" placeholder="附带条件 / 豁免单号"></td>
+                          <td class="td"><input type="date" class="inp text-[11px]" x-model="s.signed_date"></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

@@ -50,6 +50,25 @@ function defaultSignoff() {
   return { approved: false, reviewer: '', reviewed_at: '', ticket: '' };
 }
 
+function defaultReview(systemId = 'new-system') {
+  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const slug = String(systemId || 'SYS').slice(0, 14).toUpperCase();
+  return {
+    assessment_id: `DPIA-${stamp}-${slug}`,
+    business_owner: '',
+    lawful_basis_rationale: '',
+    necessity_proportionality: '',
+    data_subject_rights_sla: '',
+    fria_affected_groups: '',
+    fria_fairness_bias: '',
+    fria_human_oversight: '',
+    important_data_impact: '',
+    important_data_filing_ref: '',
+    remediations: [],
+    signoffs: [],
+  };
+}
+
 function normalizeSpec(raw) {
   const s = JSON.parse(JSON.stringify(raw));
   s.schema_version = s.schema_version || '1.0';
@@ -100,6 +119,7 @@ function workbench() {
   return {
     meta: { enums: {}, controls: [], red_lines: [], examples: [] },
     spec: normalizeSpec(starterSpec()),
+    review: defaultReview('new-system'),
     result: null,
     errors: [],
     stale: false,
@@ -112,6 +132,7 @@ function workbench() {
     toast: '',
     _timer: null,
     _seq: 0,
+    _syncingReview: false,
     dfdSvg: '',
 
     async init() {
@@ -128,6 +149,9 @@ function workbench() {
       else this.scheduleAssess(0);
       this.$watch('spec', () => this.scheduleAssess());
       this.$watch('asOf', () => this.scheduleAssess());
+      this.$watch('review', () => {
+        if (!this._syncingReview) this.scheduleAssess(450);
+      });
     },
 
     // ---------------- labels & options ----------------
@@ -184,20 +208,99 @@ function workbench() {
       clearTimeout(this._timer);
       this._timer = setTimeout(() => this.runAssess(), delay);
     },
+    _syncReviewFromResult(data) {
+      this._syncingReview = true;
+      try {
+        const existingByFinding = new Map(
+          this.review.remediations.filter((r) => r.finding_id).map((r) => [r.finding_id, r]),
+        );
+        const customRows = this.review.remediations.filter((r) => !r.finding_id);
+        const merged = (data.default_remediations || []).map((def) => {
+          const prev = existingByFinding.get(def.finding_id);
+          return prev ? { ...def, ...prev } : { ...def };
+        });
+        const combined = [...merged, ...customRows].map((row, i) => ({
+          ...row,
+          rem_id: `REM-${String(i + 1).padStart(2, '0')}`,
+        }));
+        if (JSON.stringify(combined) !== JSON.stringify(this.review.remediations)) {
+          this.review.remediations = combined;
+        }
+        if (!this.review.signoffs.length && data.default_signoffs) {
+          this.review.signoffs = data.default_signoffs.map((s) => ({ ...s }));
+        }
+      } finally {
+        this.$nextTick(() => { this._syncingReview = false; });
+      }
+    },
     async runAssess() {
       this.loading = true;
       try {
         const res = await fetch('/api/assess', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ spec: cleanSpec(this.spec), as_of: this.asOf || null }),
+          body: JSON.stringify({ spec: cleanSpec(this.spec), as_of: this.asOf || null, review: this.review }),
         });
         const data = await res.json();
         if (!res.ok) { this.errors = data.errors || [data.message || '评估失败']; this.stale = !!this.result; return; }
         this.errors = []; this.stale = false; this.result = data;
+        this._syncReviewFromResult(data);
         this.$nextTick(() => this.renderDfd());
       } catch (e) {
         this.errors = [`无法连接评估服务：${e.message}`];
       } finally { this.loading = false; }
+    },
+    addRemediation() {
+      const idx = this.review.remediations.length + 1;
+      const due = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+      this.review.remediations.push({
+        rem_id: `REM-${String(idx).padStart(2, '0')}`,
+        finding_id: '',
+        control_id: '',
+        action: '请填写整改措施',
+        owner: '',
+        due_date: due,
+        evidence: '',
+        status: 'Open',
+      });
+    },
+    fillSampleReview() {
+      const name = this.spec.metadata.name || '本系统';
+      const today = new Date().toISOString().slice(0, 10);
+      this.review.business_owner = this.review.business_owner || '业务条线负责人（零售/产品部）';
+      this.review.lawful_basis_rationale =
+        `已逐一核验 ${name} 各处理节点合法性基础：涉敏感个人信息与外部征信/身份核验环节均采用单独同意（separate_consent）或法定合同必需，未在中国业务场景下混用 GDPR 合法利益。`;
+      this.review.necessity_proportionality =
+        '已按最小必要原则裁剪非核心字段，仅保留实现身份核验与风险决策所必需的衍生特征，避免原始明文生物特征长期留存，且已评估人工审核替代方案的时效成本。';
+      this.review.data_subject_rights_sla =
+        '在产品端提供分层隐私政策告知、独立撤回授权入口与拒绝自动化决策申诉通道；数据主体查询、更正、删除及人工复核请求承诺在 15 个工作日内闭环响应。';
+      if (this.result?.report.threshold.fria_required) {
+        this.review.fria_affected_groups = '面向成年个人客户群体，已排除未满 14 周岁未成年人，日均调用属高频自动化评估场景。';
+        this.review.fria_fairness_bias = '已完成跨年龄、性别及地域维度的群体误拒率（FPR/FNR）偏差测试，差异控制在 2% 阈值以内。';
+        this.review.fria_human_oversight = '风控操作员具备逐案人工复核、结果覆写及一键中止模型服务（Kill-Switch）权限，并已纳入季度应急演练。';
+      }
+      if (this.result?.report.threshold.important_data_assessment_required) {
+        this.review.important_data_impact = '重要数据严格在境内生产专网闭环存储与处理，未向境外提供；对外接口经由金融专线与双向 mTLS 加密。';
+        this.review.important_data_filing_ref = 'IMP-ASSESS-2026-001（已纳入年度重要数据风险评估报送计划）';
+      }
+      if (this.review.signoffs.length >= 2) {
+        this.review.signoffs[0].name = this.review.signoffs[0].name || '张明 / 零售业务部';
+        this.review.signoffs[0].decision = '确认提交并承担剩余风险';
+        this.review.signoffs[0].signed_date = this.review.signoffs[0].signed_date || today;
+        this.review.signoffs[1].name = this.review.signoffs[1].name || '李华 / 信息安全与隐私工程部';
+        this.review.signoffs[1].decision = '技术控制核验通过';
+        this.review.signoffs[1].signed_date = this.review.signoffs[1].signed_date || today;
+      }
+      this.notify('已填入示范审查内容，最终报告已同步更新');
+    },
+    exportRemediationCsv() {
+      const rows = this.review.remediations || [];
+      const header = ['整改编号', '关联发现ID', '控制编号', '具体整改动作', '责任人', '目标完成日', '验证证据', '状态'];
+      const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const lines = [
+        header.map(esc).join(','),
+        ...rows.map((r) => [r.rem_id, r.finding_id, r.control_id, r.action, r.owner, r.due_date, r.evidence, r.status].map(esc).join(',')),
+      ];
+      this.download(`${this.spec.metadata.system_id}_整改台账.csv`, '\uFEFF' + lines.join('\r\n'), 'text/csv');
     },
     async renderDfd() {
       const el = document.getElementById('dfd-canvas');
@@ -214,18 +317,36 @@ function workbench() {
       const res = await fetch(`/api/examples/${id}`);
       const data = await res.json();
       if (!res.ok) { this.notify(data.message || '加载失败'); return; }
-      this.spec = normalizeSpec(data.spec); this.selectedExample = id;
+      this._syncingReview = true;
+      this.spec = normalizeSpec(data.spec);
+      this.review = defaultReview(this.spec.metadata.system_id);
+      this.selectedExample = id;
+      this.$nextTick(() => { this._syncingReview = false; });
       this.notify('已载入模板：' + (this.meta.examples.find((e) => e.id === id)?.title || id));
       this.scheduleAssess(0);
     },
-    newBlank() { this.spec = normalizeSpec(starterSpec()); this.selectedExample = ''; this.notify('已新建空白评估'); this.scheduleAssess(0); },
+    newBlank() {
+      this._syncingReview = true;
+      this.spec = normalizeSpec(starterSpec());
+      this.review = defaultReview('new-system');
+      this.selectedExample = '';
+      this.$nextTick(() => { this._syncingReview = false; });
+      this.notify('已新建空白评估');
+      this.scheduleAssess(0);
+    },
     async importYaml(evt) {
       const file = evt.target.files[0]; if (!file) return;
       const text = await file.text(); evt.target.value = '';
       const res = await fetch('/api/parse-yaml', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ yaml_text: text }) });
       const data = await res.json();
       if (!res.ok) { this.errors = data.errors || [data.message]; this.notify('导入失败：YAML 未通过校验'); return; }
-      this.spec = normalizeSpec(data.spec); this.selectedExample = ''; this.notify(`已导入 ${file.name}`); this.scheduleAssess(0);
+      this._syncingReview = true;
+      this.spec = normalizeSpec(data.spec);
+      this.review = defaultReview(this.spec.metadata.system_id);
+      this.selectedExample = '';
+      this.$nextTick(() => { this._syncingReview = false; });
+      this.notify(`已导入 ${file.name}`);
+      this.scheduleAssess(0);
     },
     async exportYaml() {
       const res = await fetch('/api/export-yaml', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec: cleanSpec(this.spec) }) });

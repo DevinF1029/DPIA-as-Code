@@ -28,6 +28,7 @@ from dpia_as_code.models import (
     DataSubjectCategory,
     EntityRole,
     FinancialDataLevel,
+    HumanReviewSheet,
     IdentifiabilityLevel,
     IndustrySector,
     Jurisdiction,
@@ -40,7 +41,12 @@ from dpia_as_code.models import (
     RiskLevel,
     TransferMechanism,
 )
-from dpia_as_code.reporter import render_markdown_report, render_pr_comment
+from dpia_as_code.reporter import (
+    build_default_remediations,
+    build_default_signoffs,
+    render_markdown_report,
+    render_pr_comment,
+)
 from dpia_as_code.rules_loader import RulePackBundle, load_rule_bundle
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -269,6 +275,7 @@ _ENUMS: dict[str, type[StrEnum]] = {
 class SpecRequest(BaseModel):
     spec: dict[str, Any]
     as_of: date | None = None
+    review: HumanReviewSheet | None = None
 
 
 class YamlRequest(BaseModel):
@@ -415,9 +422,15 @@ def create_app() -> FastAPI:
         report = assess_dataflow(model, rule_bundle=_bundle(), as_of=req.as_of)
         return {
             "report": report.model_dump(mode="json"),
-            "markdown": render_markdown_report(model, report),
+            "markdown": render_markdown_report(model, report, review=req.review),
             "pr_comment": render_pr_comment(model, report),
             "topology_warnings": model.topology_warnings(),
+            "default_remediations": [
+                item.model_dump(mode="json") for item in build_default_remediations(report)
+            ],
+            "default_signoffs": [
+                item.model_dump(mode="json") for item in build_default_signoffs(model)
+            ],
         }
 
     @app.post("/api/export-yaml")
