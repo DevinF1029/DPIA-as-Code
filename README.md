@@ -1,5 +1,9 @@
 # DPIA-as-Code
 
+[![CI Compliance Gate](https://github.com/DevinF1029/DPIA-as-Code/actions/workflows/dpia-gate.yml/badge.svg)](https://github.com/DevinF1029/DPIA-as-Code/actions/workflows/dpia-gate.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg)](pyproject.toml)
+
 > **Governance First, Automated by Code（治理体系为本，工程代码为用）**
 >
 > 基于架构声明文件（`dataflow.yaml`）的自动化 **DPIA / PIPL PIA / EU AI Act FRIA / 中国重要数据评估** 与 **LINDDUN 隐私威胁建模** 引擎，提供 **CI/CD 合并门禁** 与面向非技术人员的 **交互式 Web 合规评估工作台**。
@@ -24,6 +28,8 @@ flowchart TB
     L1 --> L2 --> L4
     L3 --> L4
 ```
+
+> **为何采用四层解耦设计**：法规变动时只需更新 `governance/` 与 `rules/*.yaml`，无需重写引擎代码；同时 `rules_loader.py` 启动时自动校验 `04_control_catalog.md` 与 `rules/control_catalog.yaml`、`thresholds.yaml` 之间的 1:1 引用完整性，确保每条自动化门禁拦截均可反向追溯至具体法条与控制编号。
 
 ### 核心能力
 
@@ -123,6 +129,7 @@ DPIA-as-Code/
 │   └── workflows/
 │       └── dpia-gate.yml                   # GitHub Actions CI/CD 门禁、报告归档与自动 PR 评论
 ├── .gitignore                              # Git 忽略规则（artifacts/、缓存等）
+├── LICENSE                                 # Apache License 2.0 开源协议
 ├── pyproject.toml                          # 项目元数据、依赖与 `dpia` CLI 入口配置
 ├── README.md                               # 项目总览与使用手册
 ├── docs/
