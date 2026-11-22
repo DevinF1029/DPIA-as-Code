@@ -55,6 +55,35 @@ class TestWebWorkbenchAPI(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(payload["report"]["threshold"]["important_data_assessment_required"])
         self.assertIn("flowchart LR", payload["report"]["mermaid_dfd"])
         self.assertIn("综合隐私、数据安全与 AI 影响评估报告", payload["markdown"])
+        self.assertGreaterEqual(len(payload["default_remediations"]), 1)
+        self.assertEqual(len(payload["default_signoffs"]), 3)
+
+        # Verify human review sheet supplements compile directly into final Markdown
+        review_payload = {
+            "assessment_id": "DPIA-20261122-BANK01",
+            "business_owner": "零售金融总部 / 张明",
+            "lawful_basis_rationale": "已全部核验单独同意与合同必需。",
+            "necessity_proportionality": "仅保留必要风控衍生指标。",
+            "data_subject_rights_sla": "15 个工作日内闭环响应。",
+            "fria_affected_groups": "成年个人信贷客户。",
+            "fria_fairness_bias": "跨群体偏差小于 2%。",
+            "fria_human_oversight": "具备 7x24 人工复核与一键中止。",
+            "important_data_impact": "重要数据境内专网闭环存储。",
+            "important_data_filing_ref": "IMP-2026-009",
+            "remediations": payload["default_remediations"],
+            "signoffs": payload["default_signoffs"],
+        }
+        enriched_res = await self.client.post(
+            "/api/assess", json={"spec": spec, "review": review_payload}
+        )
+        self.assertEqual(enriched_res.status_code, 200)
+        enriched_md = enriched_res.json()["markdown"]
+        self.assertIn("DPIA-20261122-BANK01", enriched_md)
+        self.assertIn("零售金融总部 / 张明", enriched_md)
+        self.assertIn("跨群体偏差小于 2%", enriched_md)
+        self.assertIn("IMP-2026-009", enriched_md)
+        self.assertIn("6.2 整改追踪与行动计划", enriched_md)
+        self.assertNotIn("<请", enriched_md)
 
         export_res = await self.client.post("/api/export-yaml", json={"spec": spec})
         self.assertEqual(export_res.status_code, 200)

@@ -199,6 +199,52 @@ class GateDecision(BaseModel):
     waiver_evaluations: list[WaiverEvaluation] = Field(default_factory=list)
 
 
+class RemediationItem(BaseModel):
+    """Actionable remediation row linked to a LINDDUN ThreatFinding (Section 6.2)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rem_id: str = Field(description="Sequential remediation ID (e.g., REM-01).")
+    finding_id: str = Field(default="", description="Linked ThreatFinding ID.")
+    control_id: str = Field(default="", description="Target control ID (e.g., PC-ENC-02).")
+    action: str = Field(default="", description="Concrete engineering or governance action.")
+    owner: str = Field(default="", description="Accountable owner or team.")
+    due_date: str = Field(default="", description="Target completion date (YYYY-MM-DD).")
+    evidence: str = Field(default="", description="Verification PR, ticket, or audit evidence link.")
+    status: Literal["Open", "In Progress", "Closed"] = "Open"
+
+
+class SignOffEntry(BaseModel):
+    """Formal approval row for the DPIA Sign-Off table (Section 7)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    role: str
+    name: str = ""
+    decision: str = ""
+    comments: str = ""
+    signed_date: str = ""
+
+
+class HumanReviewSheet(BaseModel):
+    """Interactive human-judgment supplement captured in the DPIA Sheet (DPO / BO / 2LoD)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    assessment_id: str = ""
+    business_owner: str = ""
+    lawful_basis_rationale: str = ""
+    necessity_proportionality: str = ""
+    data_subject_rights_sla: str = ""
+    fria_affected_groups: str = ""
+    fria_fairness_bias: str = ""
+    fria_human_oversight: str = ""
+    important_data_impact: str = ""
+    important_data_filing_ref: str = ""
+    remediations: list[RemediationItem] = Field(default_factory=list)
+    signoffs: list[SignOffEntry] = Field(default_factory=list)
+
+
 class AssessmentReport(BaseModel):
     """Complete DPIA-as-Code execution output."""
 

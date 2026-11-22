@@ -6,21 +6,103 @@ from datetime import timedelta
 
 from jinja2 import Environment
 
-from dpia_as_code.models import AssessmentReport, DataFlowModel, Jurisdiction, RiskLevel
+from dpia_as_code.models import (
+    AssessmentReport,
+    DataFlowModel,
+    HumanReviewSheet,
+    Jurisdiction,
+    PETType,
+    RemediationItem,
+    RiskLevel,
+    SignOffEntry,
+)
+
+_PET_DEFAULT_CONTROL: dict[PETType, str] = {
+    PETType.PURPOSE_LIMITATION: "PC-GOV-01",
+    PETType.CONSENT_MANAGEMENT: "PC-GOV-02",
+    PETType.PRIVACY_NOTICE_TRANSPARENCY: "PC-GOV-03",
+    PETType.DATA_MINIMIZATION: "PC-DAT-01",
+    PETType.RETENTION_ENFORCEMENT: "PC-DAT-03",
+    PETType.DATA_MASKING: "PC-DAT-04",
+    PETType.ENCRYPTION_IN_TRANSIT: "PC-ENC-01",
+    PETType.ENCRYPTION_AT_REST: "PC-ENC-02",
+    PETType.PSEUDONYMIZATION: "PC-ENC-03",
+    PETType.ANONYMIZATION: "PC-ENC-04",
+    PETType.DIFFERENTIAL_PRIVACY: "PC-ENC-05",
+    PETType.FEDERATED_LEARNING: "PC-ENC-06",
+    PETType.ZERO_KNOWLEDGE_PROOF: "PC-ENC-06",
+    PETType.ACCESS_CONTROL_RBAC: "PC-ACC-01",
+    PETType.AUDIT_LOGGING: "PC-ACC-02",
+    PETType.HUMAN_IN_THE_LOOP: "PC-AI-01",
+    PETType.SCC_TRANSFER_MECHANISM: "PC-XBD-01",
+    PETType.PIPL_SECURITY_ASSESSMENT: "PC-XBD-02",
+    PETType.PIPL_STANDARD_CONTRACT: "PC-XBD-02",
+    PETType.DPA_CONTRACT: "PC-XBD-03",
+    PETType.SECURITY_AUDIT: "PC-GOV-05",
+}
+
+
+def build_default_remediations(report: AssessmentReport) -> list[RemediationItem]:
+    """Generate initial RemediationItem rows from Medium/High/Critical residual findings."""
+    items: list[RemediationItem] = []
+    idx = 0
+    for finding in report.findings:
+        if finding.residual_risk.level == RiskLevel.LOW:
+            continue
+        idx += 1
+        first_pet = finding.recommended_pets[0] if finding.recommended_pets else None
+        ctrl_id = _PET_DEFAULT_CONTROL.get(first_pet, "") if first_pet else ""
+        sla_days = (
+            14
+            if finding.residual_risk.level in (RiskLevel.HIGH, RiskLevel.CRITICAL)
+            else 30
+        )
+        due = (report.generated_at.date() + timedelta(days=sla_days)).isoformat()
+        items.append(
+            RemediationItem(
+                rem_id=f"REM-{idx:02d}",
+                finding_id=finding.finding_id,
+                control_id=ctrl_id,
+                action=f"针对 {finding.element_name}（{finding.title}）落实缓解控制并补充审计证据",
+                owner="",
+                due_date=due,
+                evidence="",
+                status="Open",
+            )
+        )
+    return items
+
+
+def build_default_signoffs(model: DataFlowModel) -> list[SignOffEntry]:
+    """Build the standard 3-role sign-off rows pre-populated with `dpo_signoff` if present."""
+    dpo = model.metadata.dpo_signoff
+    return [
+        SignOffEntry(role="业务负责人 (BO)", decision="待确认"),
+        SignOffEntry(role="隐私工程 / 安全 (2LoD)", decision="待技术验证"),
+        SignOffEntry(
+            role="数据保护官 (DPO)",
+            name=dpo.reviewer if (dpo and dpo.reviewer) else "",
+            decision="已签批" if (dpo and dpo.approved) else "待审批",
+            comments=dpo.ticket if (dpo and dpo.ticket) else "",
+            signed_date=dpo.reviewed_at.isoformat() if (dpo and dpo.reviewed_at) else "",
+        ),
+    ]
+
 
 _AUDIT_REPORT_TEMPLATE = """# 综合隐私、数据安全与 AI 影响评估报告（Unified DPIA / PIA / FRIA Report）
 
-> **模板对标**：`TPL-DPIA-001` ｜ **生成时间**：`{{ generated_at }}`
+> **模板对标**：`TPL-DPIA-001` ｜ **评估编号**：`{{ assessment_id }}` ｜ **生成时间**：`{{ generated_at }}`
 > **法定归档提示**：本报告及支撑证据须保存至少 **3 年**（重要数据及涉监管报送项目不少于 5 年）。
 
 ---
 
 ## 一、 评估基本档案（Executive Summary）
 
-| 评估属性 | 自动生成内容 |
+| 评估属性 | 评估内容 |
 | :--- | :--- |
 | **系统 / 功能名称** | {{ model.metadata.name }} (`{{ model.metadata.system_id }}`) |
 | **数据控制者 / 处理者** | {{ model.metadata.controller }} |
+| **业务负责人 (BO)** | {{ review.business_owner or '待填写' }} |
 | **行业板块 / CIIO 标识** | `{{ model.metadata.industry_sector.value }}` ｜ CIIO：`{{ "是" if model.metadata.is_ciio else "否" }}` |
 | **适用法域** | {{ jurisdictions_str }} |
 | **触发评估类型** | DPIA/PIA：`{{ "强制触发" if report.threshold.dpia_required else "未触发" }}` ｜ FRIA：`{{ "强制触发" if report.threshold.fria_required else "未触发" }}` ｜ 重要数据评估：`{{ "强制触发" if report.threshold.important_data_assessment_required else "未触发" }}` |
@@ -98,13 +180,13 @@ _AUDIT_REPORT_TEMPLATE = """# 综合隐私、数据安全与 AI 影响评估报�
 
 ---
 
-## 四、 合法性、必要性与比例性实质审查（DPO 人工填写核心章节）
+## 四、 合法性、必要性与比例性实质审查（DPO 人工审查章节）
 
-> **说明**：自动化引擎已完成客观事实核验与阈值判定，以下实质裁量必须由业务负责人起草并经 DPO 签字把关。
+> **说明**：自动化引擎已完成客观事实核验与阈值判定，以下实质裁量由业务负责人起草并经 DPO 复核确认。
 
-1. **合法性基础适格性论证**：`<请确认所选合法性基础覆盖所有适用法域，且未在中国业务中误用 GDPR 合法利益>`
-2. **最小必要与比例性论证**：`<请论证采集敏感字段/生物识别/金融数据的不可替代性及已评估的低侵入替代方案>`
-3. **数据主体权利保障机制**：`<请说明告知、撤回同意、查询删除、关闭个性化与人工申诉的 SLA 与操作路径>`
+1. **合法性基础适格性论证**：{{ review.lawful_basis_rationale or '<请确认所选合法性基础覆盖所有适用法域，且未在中国业务中误用 GDPR 合法利益>' }}
+2. **最小必要与比例性论证**：{{ review.necessity_proportionality or '<请论证采集敏感字段/生物识别/金融数据的不可替代性及已评估的低侵入替代方案>' }}
+3. **数据主体权利保障机制**：{{ review.data_subject_rights_sla or '<请说明告知、撤回同意、查询删除、关闭个性化与人工申诉的 SLA 与操作路径>' }}
 {% if report.threshold.fria_required or report.threshold.important_data_assessment_required %}
 
 ---
@@ -114,20 +196,23 @@ _AUDIT_REPORT_TEMPLATE = """# 综合隐私、数据安全与 AI 影响评估报�
 
 ### 5.1 EU AI Act 基本权利影响评估（FRIA — Art. 27）
 * **AI 风险定级与模型卡片**：`{{ model.metadata.ai_system.risk_tier.value if model.metadata.ai_system else 'inferred_high_risk' }}` / `{{ model.metadata.ai_system.model_card_ref if model.metadata.ai_system and model.metadata.ai_system.model_card_ref else '待补充' }}`
-* **平等权与非歧视风险评估**：`<请补充训练数据代表性、群体误拒率偏差测试结论>`
-* **人工监督落地措施（Art. 14）**：`<请补充操作员复核 SOP 与一键中止 Kill-Switch 演练记录>`
+* **受影响群体与部署频次**：{{ review.fria_affected_groups or '<请说明受影响的自然人群体范围、弱势群体排查与调用频次>' }}
+* **平等权与非歧视风险评估**：{{ review.fria_fairness_bias or '<请补充训练数据代表性、群体误拒率偏差测试结论>' }}
+* **人工监督落地措施（Art. 14）**：{{ review.fria_human_oversight or '<请补充操作员复核 SOP 与一键中止 Kill-Switch 演练记录>' }}
 {% endif %}
 {% if report.threshold.important_data_assessment_required %}
 
 ### 5.2 重要数据 / CIIO 安全评估（DSL Art. 30 / 网数条例 Art. 31）
-* **国家安全与公共利益影响评估**：`<请补充重要/核心数据共享与出境影响分析>`
-* **年度主管部门报送/出境评估回执编号**：`<请填写备案或申报编号>`
+* **国家安全与公共利益影响评估**：{{ review.important_data_impact or '<请补充重要/核心数据共享与出境影响分析>' }}
+* **年度主管部门报送/出境评估回执编号**：{{ review.important_data_filing_ref or '<请填写备案或申报编号>' }}
 {% endif %}
 {% endif %}
 
 ---
 
 ## 六、 LINDDUN 隐私威胁建模与量化风险矩阵
+
+### 6.1 威胁评估与控制折减明细
 
 * **发现总数**：`{{ report.risk_summary.total_findings }}`（Critical: `{{ counts.critical }}` ｜ High: `{{ counts.high }}` ｜ Medium: `{{ counts.medium }}` ｜ Low: `{{ counts.low }}`）
 
@@ -140,9 +225,19 @@ _AUDIT_REPORT_TEMPLATE = """# 综合隐私、数据安全与 AI 影响评估报�
 {% else %}
 * 当前架构未检出需额外处置的 LINDDUN 隐私威胁。
 {% endif %}
+{% if remediations %}
+
+### 6.2 整改追踪与行动计划（Remediation Plan）
+
+| 整改编号 | 关联发现 ID | 对应控制编号 | 具体整改动作 | 责任人 | 目标完成日 | 验证证据链接 | 状态 |
+| :--- | :--- | :---: | :--- | :--- | :---: | :--- | :---: |
+{% for item in remediations %}
+| `{{ item.rem_id }}` | `{{ item.finding_id or '-' }}` | `{{ item.control_id or '-' }}` | {{ item.action }} | {{ item.owner or '待指派' }} | `{{ item.due_date or '-' }}` | {{ item.evidence or '-' }} | `{{ item.status }}` |
+{% endfor %}
+{% endif %}
 {% if report.gate.waiver_evaluations %}
 
-### 限时风险豁免单（Risk Waivers）核验状态
+### 6.3 限时风险豁免单（Risk Waivers）核验状态
 
 | 豁免单号 | 覆盖发现项 | 状态 | 硬性到期日 | 说明 |
 | :--- | :--- | :---: | :---: | :--- |
@@ -157,9 +252,9 @@ _AUDIT_REPORT_TEMPLATE = """# 综合隐私、数据安全与 AI 影响评估报�
 
 | 角色 | 姓名 / 部门 | 审批结论 | 意见与附带条件 | 日期 |
 | :--- | :--- | :--- | :--- | :---: |
-| **业务负责人 (BO)** | | 确认提交 / 承担剩余风险 | | |
-| **隐私工程 / 安全 (2LoD)** | | 技术控制验证通过 / 退回 | | |
-| **数据保护官 (DPO)** | {{ model.metadata.dpo_signoff.reviewer if model.metadata.dpo_signoff and model.metadata.dpo_signoff.reviewer else '' }} | {{ "已签批" if model.metadata.dpo_signoff and model.metadata.dpo_signoff.approved else "待审批" }} | {{ model.metadata.dpo_signoff.ticket if model.metadata.dpo_signoff and model.metadata.dpo_signoff.ticket else '' }} | {{ model.metadata.dpo_signoff.reviewed_at if model.metadata.dpo_signoff and model.metadata.dpo_signoff.reviewed_at else '' }} |
+{% for row in signoffs %}
+| **{{ row.role }}** | {{ row.name }} | {{ row.decision }} | {{ row.comments }} | {{ row.signed_date }} |
+{% endfor %}
 """
 
 _PR_COMMENT_TEMPLATE = """## DPIA-as-Code 隐私与合规门禁摘要
@@ -184,7 +279,11 @@ def _gate_badge(status: str) -> str:
     }.get(status, status.upper())
 
 
-def _build_context(model: DataFlowModel, report: AssessmentReport) -> dict:
+def _build_context(
+    model: DataFlowModel,
+    report: AssessmentReport,
+    review: HumanReviewSheet | None = None,
+) -> dict:
     review_days = 180 if report.risk_summary.overall_residual_level == RiskLevel.MEDIUM else 365
     if report.risk_summary.overall_residual_level in (RiskLevel.HIGH, RiskLevel.CRITICAL):
         review_days = 90
@@ -195,9 +294,20 @@ def _build_context(model: DataFlowModel, report: AssessmentReport) -> dict:
         "medium": report.risk_summary.residual_counts[RiskLevel.MEDIUM],
         "low": report.risk_summary.residual_counts[RiskLevel.LOW],
     }
+    sheet = review or HumanReviewSheet()
+    assessment_id = (
+        sheet.assessment_id
+        or f"DPIA-{report.generated_at.strftime('%Y%m%d')}-{model.metadata.system_id[:16].upper()}"
+    )
+    remediations = sheet.remediations if sheet.remediations else build_default_remediations(report)
+    signoffs = sheet.signoffs if sheet.signoffs else build_default_signoffs(model)
     return {
         "model": model,
         "report": report,
+        "review": sheet,
+        "assessment_id": assessment_id,
+        "remediations": remediations,
+        "signoffs": signoffs,
         "generated_at": report.generated_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
         "jurisdictions_str": ", ".join(j.value for j in model.metadata.jurisdictions),
         "gate_badge": _gate_badge(report.gate.status),
@@ -208,11 +318,15 @@ def _build_context(model: DataFlowModel, report: AssessmentReport) -> dict:
     }
 
 
-def render_markdown_report(model: DataFlowModel, report: AssessmentReport) -> str:
+def render_markdown_report(
+    model: DataFlowModel,
+    report: AssessmentReport,
+    review: HumanReviewSheet | None = None,
+) -> str:
     """Render the full audit-grade Chinese Markdown DPIA/PIA/FRIA report."""
     env = Environment(autoescape=False, trim_blocks=True, lstrip_blocks=True)
     template = env.from_string(_AUDIT_REPORT_TEMPLATE)
-    return template.render(**_build_context(model, report)).strip() + "\n"
+    return template.render(**_build_context(model, report, review=review)).strip() + "\n"
 
 
 def render_pr_comment(model: DataFlowModel, report: AssessmentReport) -> str:
