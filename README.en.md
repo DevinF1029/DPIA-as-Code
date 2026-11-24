@@ -12,7 +12,7 @@
 >
 > Architecture-driven **DPIA / PIPL PIA / EU AI Act FRIA / China Important Data Assessment** & **LINDDUN privacy threat modeling** from a single `dataflow.yaml` — generating audit-ready reports, remediation CSVs, CI/CD PR merge gates, and a no-code interactive Web Workbench for DPOs and legal teams.
 
-![DPIA-as-Code Cover](docs/images/social_preview.png)
+![DPIA-as-Code Cover](docs/images/social_preview.jpg)
 
 ---
 

@@ -12,7 +12,7 @@
 >
 > 基于架构声明文件（`dataflow.yaml`）的自动化 **DPIA / PIPL PIA / EU AI Act FRIA / 中国重要数据评估** 与 **LINDDUN 隐私威胁建模** 引擎，提供 **CI/CD 合并门禁** 与面向非技术人员的 **交互式 Web 合规评估工作台**。
 
-![DPIA-as-Code Cover](docs/images/social_preview.png)
+![DPIA-as-Code Cover](docs/images/social_preview.jpg)
 
 ---
 
