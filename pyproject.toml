@@ -5,21 +5,40 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "dpia-as-code"
 version = "0.1.0"
-description = "Architecture-driven automated DPIA/PIA and LINDDUN privacy threat modeling engine for CI/CD"
+description = "Architecture-driven DPIA / PIPL PIA / EU AI Act FRIA & LINDDUN threat modeling engine with CI/CD merge gates and interactive web workbench"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
-authors = [{ name = "DPIA-as-Code Contributors" }]
+authors = [{ name = "DevinF1029" }]
 keywords = [
     "privacy",
     "dpia",
     "pia",
+    "fria",
     "gdpr",
     "pipl",
+    "eu-ai-act",
     "linddun",
     "threat-modeling",
     "privacy-engineering",
+    "grc-as-code",
     "devsecops",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Legal Industry",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
 ]
 dependencies = [
     "pydantic>=2.7.0,<3.0.0",
@@ -39,6 +58,13 @@ dev = [
     "ruff>=0.4.0",
     "httpx>=0.27.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/DevinF1029/DPIA-as-Code"
+Repository = "https://github.com/DevinF1029/DPIA-as-Code"
+Issues = "https://github.com/DevinF1029/DPIA-as-Code/issues"
+Documentation = "https://github.com/DevinF1029/DPIA-as-Code/blob/main/docs/%E9%A1%B9%E7%9B%AE%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0%E8%AE%BA%E6%96%87.md"
+Changelog = "https://github.com/DevinF1029/DPIA-as-Code/blob/main/CHANGELOG.md"
 
 [project.scripts]
 dpia = "dpia_as_code.cli:main"

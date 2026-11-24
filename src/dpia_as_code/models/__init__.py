@@ -59,7 +59,7 @@ from dpia_as_code.models.enums import (
     TransferMechanism,
 )
 
-__all__ = [
+__all__ = [  # noqa: RUF022
     # Input models
     "AISystemDeclaration",
     "ControlId",

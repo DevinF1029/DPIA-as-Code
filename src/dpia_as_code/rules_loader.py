@@ -239,7 +239,7 @@ def _load_yaml_file(path: Path) -> dict:
         raise FileNotFoundError(f"Rule pack file not found: {path}")
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
-        raise ValueError(f"Expected YAML mapping at root of {path}")
+        raise TypeError(f"Expected YAML mapping at root of {path}")
     return data
 
 

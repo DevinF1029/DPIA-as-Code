@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dpia_as_code.models import (
     AIRiskTier,
-    DataCategory,
     DataFlowModel,
     Jurisdiction,
     JurisdictionThresholdResult,

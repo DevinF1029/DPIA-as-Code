@@ -11,7 +11,7 @@ import httpx
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dpia_as_code.web.api import app  # noqa: E402
+from dpia_as_code.web.api import app
 
 
 class TestWebWorkbenchAPI(unittest.IsolatedAsyncioTestCase):

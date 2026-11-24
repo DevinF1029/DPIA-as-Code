@@ -1,0 +1,42 @@
+name: New Jurisdiction Rule or Control
+description: Propose a new regulatory threshold, statutory red line, or PC-xxx control
+title: "[Rule/Control]: "
+labels: ["enhancement", "governance-rules"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        DPIA-as-Code 遵循 **Governance First, Automated by Code**。新增规则或控制项需标明权威法规或标准依据。
+  - type: dropdown
+    id: jurisdiction
+    attributes:
+      label: Target Jurisdiction / Framework
+      options:
+        - GDPR (EU)
+        - EU AI Act
+        - China PIPL / DSL / CSL / NDSR
+        - China Financial Sector (NFRA / JR/T 0197)
+        - LINDDUN / CNIL / GB/T 39335 Methodology
+        - Other Jurisdiction
+    validations:
+      required: true
+  - type: input
+    id: legal_basis
+    attributes:
+      label: Authoritative Legal / Standard Citation
+      description: Exact article, clause, or standard ID (e.g., EU AI Act Art. 27, JR/T 0197 L4, PIPL Art. 55).
+      placeholder: "e.g., 《银行保险机构数据安全管理办法》第XX条"
+    validations:
+      required: true
+  - type: textarea
+    id: logic
+    attributes:
+      label: Proposed Trigger Logic & Gate Behavior
+      description: Describe the input fields needed in dataflow.yaml, trigger condition, and expected PASS/WARN/BLOCK outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Evidence / Audit Artifacts Expected
+      description: What verification evidence should be required for `verified` status?

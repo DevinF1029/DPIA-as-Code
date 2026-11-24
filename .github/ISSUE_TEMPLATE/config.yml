@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security Vulnerability / Gate Bypass Report
+    url: https://github.com/DevinF1029/DPIA-as-Code/security/advisories/new
+    about: Please report security vulnerabilities or compliance gate bypasses privately via GitHub Security Advisories.
+  - name: Project Whitepaper & Governance Docs
+    url: https://github.com/DevinF1029/DPIA-as-Code/blob/main/docs/%E9%A1%B9%E7%9B%AE%E8%AE%BE%E8%AE%A1%E4%B8%8E%E5%AE%9E%E7%8E%B0%E8%AE%BA%E6%96%87.md
+    about: Read the 4-layer GRC-as-Code design whitepaper before proposing architectural changes.

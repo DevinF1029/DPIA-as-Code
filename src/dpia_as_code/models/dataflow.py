@@ -740,9 +740,10 @@ class DataFlowModel(StrictBaseModel):
         result: list[DataFlow] = []
         for flow in self.flows:
             target = entities_by_id.get(flow.target)
-            if target and target.is_third_party:
-                if any(assets[aid].is_personal_data for aid in flow.data):
-                    result.append(flow)
+            if target and target.is_third_party and any(
+                assets[aid].is_personal_data for aid in flow.data
+            ):
+                result.append(flow)
         return result
 
     def get_mitigations_for(self, element_id: str) -> list[Mitigation]:

@@ -1,10 +1,18 @@
 # DPIA-as-Code
 
+[![DPIA Gate](https://github.com/DevinF1029/DPIA-as-Code/actions/workflows/dpia-gate.yml/badge.svg)](https://github.com/DevinF1029/DPIA-as-Code/actions/workflows/dpia-gate.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
+[![Release v0.1.0](https://img.shields.io/badge/release-v0.1.0-orange.svg)](https://github.com/DevinF1029/DPIA-as-Code/releases/tag/v0.1.0)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+[English README](README.en.md) | [项目设计与实现论文](docs/项目设计与实现论文.md) | [更新日志 (CHANGELOG)](CHANGELOG.md)
+
 > **Governance First, Automated by Code（治理体系为本，工程代码为用）**
 >
 > 基于架构声明文件（`dataflow.yaml`）的自动化 **DPIA / PIPL PIA / EU AI Act FRIA / 中国重要数据评估** 与 **LINDDUN 隐私威胁建模** 引擎，提供 **CI/CD 合并门禁** 与面向非技术人员的 **交互式 Web 合规评估工作台**。
->
-> 如需了解本项目的完整设计思想、痛点分析、方法论融合与未来演进，请阅读：[项目设计与实现论文](docs/项目设计与实现论文.md)。
+
+![DPIA-as-Code Cover](docs/images/social_preview.png)
 
 ---
 
@@ -33,6 +41,19 @@ flowchart TB
 * **通用数据安全 GRC 为本，预留金融行业扩展口子**：在模型中预留可选 `industry_sector`（`banking` / `insurance` 等）、`is_ciio`、`financial_data_level`（对标 JR/T 0197 `L1`–`L5`）与 `Jurisdiction.CN_FIN_NFRA`。
 * **面向非程序员的交互式 Web 工作台与动态 DPIA 评估表**：法务、DPO 与业务负责人可在浏览器中通过分步表单填报、切换控制成熟度做 What-if 模拟、在**动态 DPIA 评估表**中在线补全实质审查/整改排期/三方签批（按需自动展开 FRIA 与重要数据章节），一键导出无占位符中文审计报告（Markdown / PDF）、整改台账（CSV）及标准 `dataflow.yaml`。
 
+### 界面预览与门禁效果
+
+| Web 工作台总览（银行信贷 AI：`WARN` 警示放行 + 4×4 风险矩阵） | 红线阻断状态（跨境人脸识别 KYC：`BLOCK` 命中 `RL-03` / `RL-05`） |
+| :---: | :---: |
+| ![Web Workbench Overview](docs/images/workbench_overview.png) | ![Web Workbench BLOCK State](docs/images/workbench_block.png) |
+
+<details>
+<summary>展开查看：What-if 控制成熟度模拟与自动生成的信任边界 DFD 数据流图</summary>
+
+![What-if Simulation & Mermaid DFD](docs/images/workbench_dfd.png)
+
+</details>
+
 ---
 
 ## 二、 如何手动启动 Web 合规评估工作台
@@ -45,7 +66,7 @@ flowchart TB
 
 ```bash
 # 1. 克隆仓库并进入项目根目录
-git clone <your-repo-url>
+git clone https://github.com/DevinF1029/DPIA-as-Code.git
 cd DPIA-as-Code
 
 # 2. 安装项目及 Web 依赖（FastAPI + Uvicorn）
@@ -91,10 +112,18 @@ dpia assess examples/static_marketing_site.yaml --format json
 
 > 若未执行 `pip install -e .`，在 Windows PowerShell 中可通过 `$env:PYTHONPATH="src"; python -m dpia_as_code.cli ...`（macOS/Linux 为 `PYTHONPATH=src python -m dpia_as_code.cli ...`）直接调用。
 
-### 运行全套单元测试
+### 运行全套单元测试与静态检查
 
 ```bash
+# 安装开发依赖（pytest / ruff / httpx）
+pip install -e ".[web,dev]"
+
+# 运行全套单元测试（pytest 或 unittest 均可）
+pytest -v
 python -m unittest discover -s tests -v
+
+# 代码风格与静态检查
+ruff check src tests
 ```
 
 ### 重新导出 JSON Schema（修改 Pydantic 模型后执行）
@@ -102,6 +131,16 @@ python -m unittest discover -s tests -v
 ```bash
 python -m dpia_as_code.schema_export
 ```
+
+### 在 GitHub 仓库中启用 PR 强制合并门禁（Branch Protection）
+
+仓库已内置 [dpia-gate.yml](.github/workflows/dpia-gate.yml)，会在 PR 时自动运行测试并贴出风险摘要评论。若需在合并前**硬性阻断**高风险 PR，请在仓库网页端进行一次配置：
+
+1. 进入 `Settings -> Branches -> Add branch protection rule`（或 Rulesets），填写目标分支 `main`；
+2. 勾选 **Require status checks to pass before merging**；
+3. 搜索并添加以下两个必选检查：
+   - `Unit Tests & Schema Integrity`
+   - `DPIA / PIA / FRIA Gate & PR Comment`
 
 ---
 
@@ -120,12 +159,21 @@ python -m dpia_as_code.schema_export
 ```text
 DPIA-as-Code/
 ├── .github/
+│   ├── ISSUE_TEMPLATE/                     # Bug / 新法域规则 / 功能建议 Issue 模板
+│   ├── pull_request_template.md            # PR 检查清单（测试 / Ruff / Schema 导出）
 │   └── workflows/
 │       └── dpia-gate.yml                   # GitHub Actions CI/CD 门禁、报告归档与自动 PR 评论
 ├── .gitignore                              # Git 忽略规则（artifacts/、缓存等）
+├── CHANGELOG.md                            # 版本变更记录
+├── CODE_OF_CONDUCT.md                      # 社区行为准则
+├── CONTRIBUTING.md                         # 贡献指南与规则提交规范
+├── LICENSE                                 # Apache License 2.0 全文
+├── SECURITY.md                             # 安全漏洞与门禁绕过私密报告指南
 ├── pyproject.toml                          # 项目元数据、依赖与 `dpia` CLI 入口配置
-├── README.md                               # 项目总览与使用手册
+├── README.md                               # 中文项目总览与使用手册
+├── README.en.md                            # English README
 ├── docs/
+│   ├── images/                             # Social Preview 封面与 Web 工作台截图
 │   └── 项目设计与实现论文.md                 # 完整的项目设计、方法论与实现说明论文（白皮书）
 ├── governance/                             # 第 1 层：人可读治理体系与审计模板
 │   ├── README.md                           # 治理体系总览与四层架构说明
@@ -186,3 +234,15 @@ DPIA-as-Code/
     ├── 主题.txt                            # 初始项目立项构想
     └── 工作日志.md                         # 各阶段研发进展与架构决策记录
 ```
+
+---
+
+## 六、 免责声明与许可证
+
+### 免责声明
+
+本项目输出的是自动化评估草稿与工程门禁信号，**不构成法律意见**，也不替代 DPO / 法务的实质审查与监管事前咨询。规则包与控制项请结合组织实际适用法域与监管要求复核后使用。
+
+### 许可证
+
+本项目采用 **Apache License 2.0** 开源协议发布 — 详见 [LICENSE](LICENSE)。

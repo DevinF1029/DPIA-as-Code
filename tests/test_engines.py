@@ -13,9 +13,9 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dpia_as_code.engines import assess_dataflow  # noqa: E402
-from dpia_as_code.loader import load_dataflow, parse_dataflow_yaml  # noqa: E402
-from dpia_as_code.models import Jurisdiction, RedLineId, RiskLevel  # noqa: E402
+from dpia_as_code.engines import assess_dataflow
+from dpia_as_code.loader import load_dataflow, parse_dataflow_yaml
+from dpia_as_code.models import Jurisdiction, RedLineId, RiskLevel
 
 
 class TestEndToEndExamples(unittest.TestCase):

@@ -9,13 +9,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dpia_as_code.models import (  # noqa: E402
+from dpia_as_code.models import (
     DFDElementType,
     Jurisdiction,
     PETType,
     RedLineId,
 )
-from dpia_as_code.rules_loader import load_rule_bundle  # noqa: E402
+from dpia_as_code.rules_loader import load_rule_bundle
 
 
 class TestRulePackBundle(unittest.TestCase):

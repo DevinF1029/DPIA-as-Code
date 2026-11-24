@@ -12,7 +12,7 @@ from click.testing import CliRunner
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dpia_as_code.cli import main  # noqa: E402
+from dpia_as_code.cli import main
 
 
 class TestCLI(unittest.TestCase):

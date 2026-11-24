@@ -43,6 +43,9 @@ jobs:
       - name: Run full unit test suite (Models, Rules, Engines, CLI)
         run: python -m unittest discover -s tests -v
 
+      - name: Run Ruff lint check
+        run: ruff check src tests
+
   dpia-pr-gate:
     name: DPIA / PIA / FRIA Gate & PR Comment
     needs: unit-tests-and-schema

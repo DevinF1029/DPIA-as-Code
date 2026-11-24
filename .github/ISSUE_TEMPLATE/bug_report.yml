@@ -1,0 +1,39 @@
+name: Bug Report
+description: Report a bug in the CLI, assessment engine, JSON Schema, or Web Workbench
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈问题！请尽可能提供可复现的最小 `dataflow.yaml` 片段和错误输出。
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      options:
+        - Engine (DFD / Threshold / LINDDUN / Gate)
+        - CLI (validate / assess / serve)
+        - Web Workbench (FastAPI / UI / Dynamic Sheet)
+        - Rules & Schema (rules/*.yaml / dataflow.schema.json)
+        - Report / CSV Export
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: What happened vs. what you expected to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal dataflow.yaml / Steps to reproduce
+      render: yaml
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "e.g., Windows 11 / Ubuntu 22.04, Python 3.11, commit or v0.1.0"

@@ -15,13 +15,13 @@ from jsonschema import Draft202012Validator
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dpia_as_code.loader import (  # noqa: E402
+from dpia_as_code.loader import (
     DataFlowValidationError,
     export_json_schema,
     load_dataflow,
     parse_dataflow_yaml,
 )
-from dpia_as_code.models import (  # noqa: E402
+from dpia_as_code.models import (
     AIRiskTier,
     DataAsset,
     DataCategory,

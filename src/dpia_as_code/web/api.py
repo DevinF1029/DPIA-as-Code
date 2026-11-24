@@ -342,7 +342,7 @@ def create_app() -> FastAPI:
     )
 
     @app.exception_handler(HTTPException)
-    async def _http_exc_handler(_request, exc: HTTPException) -> JSONResponse:  # noqa: ANN001
+    async def _http_exc_handler(_request, exc: HTTPException) -> JSONResponse:
         detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
         return JSONResponse(status_code=exc.status_code, content=detail)
 

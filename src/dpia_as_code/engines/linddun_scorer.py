@@ -24,9 +24,9 @@ from dpia_as_code.models import (
     Mitigation,
     MitigationStatus,
     PETType,
-    ProcessNode,
     ProcessingOperation,
     ProcessingScale,
+    ProcessNode,
     RiskLevel,
     RiskScore,
     RiskSummary,
@@ -192,11 +192,10 @@ def _should_skip_element(assets: list[DataAsset], bundle: RulePackBundle) -> boo
         for a in assets
     ):
         return True
-    if pruning.exclude_non_personal_unless_important_data and all(
-        not a.is_personal_data and not a.is_important_or_core for a in assets
-    ):
-        return True
-    return False
+    return bool(
+        pruning.exclude_non_personal_unless_important_data
+        and all(not a.is_personal_data and not a.is_important_or_core for a in assets)
+    )
 
 
 def _make_finding(

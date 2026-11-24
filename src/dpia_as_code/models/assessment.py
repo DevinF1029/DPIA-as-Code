@@ -10,7 +10,7 @@ These models connect the 5 core engines:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -250,7 +250,7 @@ class AssessmentReport(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     system_id: str
     system_name: str
     mermaid_dfd: str

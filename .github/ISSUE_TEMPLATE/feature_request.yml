@@ -1,0 +1,19 @@
+name: Feature Request
+description: Suggest an improvement to the engine, CLI, CI/CD gate, or Web Workbench
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Use Case
+      description: What GRC, DPO, or DevSecOps pain point does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe how you envision this working.
+    validations:
+      required: true
